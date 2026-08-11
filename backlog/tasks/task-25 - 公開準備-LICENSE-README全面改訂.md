@@ -1,10 +1,10 @@
 ---
 id: TASK-25
 title: '公開準備: LICENSE + README全面改訂'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 14:54'
-updated_date: '2026-08-11 14:54'
+updated_date: '2026-08-11 14:58'
 labels:
   - release
 dependencies: []
@@ -20,6 +20,12 @@ MIT LICENSE追加。READMEをOSS公開品質に: 概要(日本語主体+英語�
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 LICENSE(MIT)が存在する
-- [ ] #2 READMEが上記構成を満たす
+- [x] #1 LICENSE(MIT)が存在する
+- [x] #2 READMEが上記構成を満たす
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+README/LICENSE作成。副産物: design.mdの旧仕様(3案・意図チップ)を現行に同期
+<!-- SECTION:NOTES:END -->
