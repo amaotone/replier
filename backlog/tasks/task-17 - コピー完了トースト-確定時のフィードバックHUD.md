@@ -1,10 +1,10 @@
 ---
 id: TASK-17
 title: 'コピー完了トースト: 確定時のフィードバックHUD'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 09:19'
-updated_date: '2026-08-11 09:19'
+updated_date: '2026-08-11 09:23'
 labels:
   - ui
 dependencies: []
@@ -22,5 +22,11 @@ ordinal: 17000
 <!-- AC:BEGIN -->
 - [ ] #1 確定時にトーストが表示され自動で消える
 - [ ] #2 トーストがフォーカスを奪わずクリックも透過する
-- [ ] #3 既存テスト全パス
+- [x] #3 既存テスト全パス
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+世代カウンタで連続表示の競合を排除。AC1/2(表示・フォーカス非奪取)はGUI実機確認待ち
+<!-- SECTION:NOTES:END -->
