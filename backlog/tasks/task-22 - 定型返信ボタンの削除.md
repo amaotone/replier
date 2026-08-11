@@ -4,6 +4,7 @@ title: 定型返信ボタンの削除
 status: Done
 assignee: []
 created_date: '2026-08-11 14:36'
+updated_date: '2026-08-11 14:36'
 labels:
   - ui
 dependencies: []
@@ -19,5 +20,5 @@ ordinal: 22000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 プリセットUIとAPIが削除され全テストパス
+- [x] #1 プリセットUIとAPIが削除され全テストパス
 <!-- AC:END -->
