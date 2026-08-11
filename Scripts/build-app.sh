@@ -47,6 +47,9 @@ if [ "$SIGN_IDENTITY" != "-" ]; then
     "OTHER_CODE_SIGN_FLAGS=--timestamp --options=runtime"
     "DEVELOPMENT_TEAM=$TEAM_ID"
     "CODE_SIGN_STYLE=Manual"
+    # xcodebuild injects the get-task-allow debug entitlement into non-archive
+    # builds, which the notary service rejects.
+    "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
   )
 fi
 
