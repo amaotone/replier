@@ -39,6 +39,15 @@ hdiutil create \
   -format UDZO \
   "$OUTPUT_PATH"
 
+# Apple recommends signing the disk image itself, not just the app inside it.
+# Skipped for ad-hoc dev builds, which have no Developer ID to sign with.
+SIGN_IDENTITY="${REPLIER_SIGN_IDENTITY:--}"
+if [ "$SIGN_IDENTITY" != "-" ]; then
+  echo "==> signing DMG ($SIGN_IDENTITY)"
+  codesign --sign "$SIGN_IDENTITY" --timestamp "$OUTPUT_PATH"
+  codesign --verify --verbose=2 "$OUTPUT_PATH"
+fi
+
 echo "==> done"
 echo "DMG: $ROOT_DIR/$OUTPUT_PATH"
 echo "--- hdiutil imageinfo (Format) ---"

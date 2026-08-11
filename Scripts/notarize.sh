@@ -101,7 +101,9 @@ if [ -e "$APP_PATH/Contents/com.apple.provenance" ]; then
   echo "  REPLIER_SIGN_IDENTITY='Developer ID Application' Scripts/build-app.sh && Scripts/notarize.sh" >&2
   exit 1
 fi
-Scripts/make-dmg.sh
+# The app is already Developer ID signed at this point (checked above), so sign
+# the disk image with the same identity — Apple expects both to be signed.
+REPLIER_SIGN_IDENTITY="${REPLIER_SIGN_IDENTITY:-Developer ID Application}" Scripts/make-dmg.sh
 
 # A staple ticket is looked up by the target's own hash, so the DMG must be
 # notarized itself before it can be stapled (the app's ticket doesn't cover it).
