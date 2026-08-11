@@ -1,16 +1,16 @@
 import SwiftUI
-import ReppCore
+import ReplierCore
 
 @main
-struct ReppApp: App {
+struct ReplierApp: App {
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
     }
 
     var body: some Scene {
-        MenuBarExtra("repp", systemImage: "text.bubble") {
+        MenuBarExtra("replier", systemImage: "text.bubble") {
             VStack {
-                Text("ReppCore \(ReppCore.version)")
+                Text("ReplierCore \(ReplierCore.version)")
                 Button("Quit") {
                     NSApplication.shared.terminate(nil)
                 }

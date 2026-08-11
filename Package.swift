@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "repp",
+    name: "replier",
     platforms: [.macOS(.v15)],
     products: [
-        .library(name: "ReppCore", targets: ["ReppCore"]),
-        .executable(name: "Repp", targets: ["Repp"]),
+        .library(name: "ReplierCore", targets: ["ReplierCore"]),
+        .executable(name: "Replier", targets: ["Replier"]),
     ],
     targets: [
-        .target(name: "ReppCore", path: "Sources/ReppCore"),
-        .executableTarget(name: "Repp", dependencies: ["ReppCore"], path: "Sources/Repp"),
-        .testTarget(name: "ReppCoreTests", dependencies: ["ReppCore"], path: "Tests/ReppCoreTests"),
+        .target(name: "ReplierCore", path: "Sources/ReplierCore"),
+        .executableTarget(name: "Replier", dependencies: ["ReplierCore"], path: "Sources/Replier"),
+        .testTarget(name: "ReplierCoreTests", dependencies: ["ReplierCore"], path: "Tests/ReplierCoreTests"),
     ]
 )

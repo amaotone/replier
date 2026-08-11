@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import ReppCore
+@testable import ReplierCore
 
 @Suite struct JSONRPCConnectionTests {
     struct Greeting: Decodable, Equatable, Sendable {

@@ -1,5 +1,5 @@
 import Foundation
-@testable import ReppCore
+@testable import ReplierCore
 
 /// Test double for `JSONRPCTransport`. Records sent frames and lets tests
 /// inject frames as if they arrived from the peer.

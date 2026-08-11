@@ -1,10 +1,10 @@
 ---
 id: TASK-3
 title: 'ReplierCore: JSON-RPC 2.0コネクション(stdioフレーミング)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 06:50'
-updated_date: '2026-08-11 06:58'
+updated_date: '2026-08-11 07:07'
 labels:
   - core
 dependencies: []
@@ -20,8 +20,8 @@ ordinal: 3000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 id相関(順不同レスポンス)が正しく動く
-- [ ] #2 通知がAsyncStreamで受け取れる
-- [ ] #3 サーバー発リクエストに応答できる
-- [ ] #4 エラーレスポンスが型付きエラーになる
+- [x] #1 id相関(順不同レスポンス)が正しく動く
+- [x] #2 通知がAsyncStreamで受け取れる
+- [x] #3 サーバー発リクエストに応答できる
+- [x] #4 エラーレスポンスが型付きエラーになる
 <!-- AC:END -->

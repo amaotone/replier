@@ -1,5 +1,5 @@
 import Testing
-@testable import ReppCore
+@testable import ReplierCore
 
 @Suite struct PromptBuilderTests {
     let builder = PromptBuilder()
