@@ -1,10 +1,10 @@
 ---
 id: TASK-7
 title: FloatingPanel + グローバルホットキー + パネルUI
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 06:51'
-updated_date: '2026-08-11 07:21'
+updated_date: '2026-08-11 08:04'
 labels:
   - ui
 dependencies:
@@ -21,10 +21,12 @@ NSPanel(.nonactivatingPanel)サブクラス+NSHostingView。KeyboardShortcutsで
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 ホットキーでパネルが表示され、ホストアプリがアクティブなまま
+- [x] #1 ホットキーでパネルが表示され、ホストアプリがアクティブなまま
 - [x] #2 3案がストリーミング表示される(モックバックエンドで可)
 - [x] #3 ↑↓選択・Enter確定・Escキャンセルが動く
 <!-- AC:END -->
+
+
 
 ## Implementation Notes
 

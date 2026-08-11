@@ -1,10 +1,10 @@
 ---
 id: TASK-5
 title: 'Capture: AX選択テキスト取得 + クリップボードフォールバック'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 06:51'
-updated_date: '2026-08-11 07:11'
+updated_date: '2026-08-11 08:04'
 labels:
   - shell
 dependencies: []
@@ -20,10 +20,12 @@ AXUIElementで前面アプリのkAXSelectedTextを取得。取れない場合は
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 選択テキストが取得できる(TextEdit等で手動確認)
-- [ ] #2 AX不可時にクリップボードへフォールバックする
+- [x] #1 選択テキストが取得できる(TextEdit等で手動確認)
+- [x] #2 AX不可時にクリップボードへフォールバックする
 - [x] #3 SourceApp分類ロジックに単体テストがある
 <!-- AC:END -->
+
+
 
 ## Implementation Notes
 

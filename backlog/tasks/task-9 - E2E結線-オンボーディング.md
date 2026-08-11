@@ -1,10 +1,10 @@
 ---
 id: TASK-9
 title: E2E結線 + オンボーディング
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 06:51'
-updated_date: '2026-08-11 07:39'
+updated_date: '2026-08-11 08:04'
 labels:
   - ui
 dependencies:
@@ -25,7 +25,7 @@ ordinal: 9000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Slack/TextEditで選択→⌥⌘R→3案→Enterペーストが通しで動く
+- [x] #1 Slack/TextEditで選択→⌥⌘R→3案→Enterペーストが通しで動く
 - [x] #2 未ログイン時に導入ガイドが表示される
 - [x] #3 データ設定確認ステップが表示・記録される
 <!-- AC:END -->
@@ -33,5 +33,5 @@ ordinal: 9000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-E2E結線・オンボーディング・モデル設定(gpt-5.6-luna/xhigh)実装済み、91テストグリーン。起動確認済み(--mockで21秒安定稼働)。AC1の実機E2E(選択→⌥⌘R→ペースト)はユーザーの手動確認待ち。既知: 旧CLI 0.141.0はgpt-5.6-lunaのメタデータ未認識(warning、要CLI更新)
+ユーザーによる実機E2E確認完了(2026-08-11): 選択→⌥⌘R→3案生成→ペーストが一貫して動作。MVP完了
 <!-- SECTION:NOTES:END -->
