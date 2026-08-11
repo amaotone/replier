@@ -1,10 +1,10 @@
 ---
 id: TASK-12
 title: 'ゼロクリック生成: 自動意図でパネル表示と同時に生成開始'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 08:07'
-updated_date: '2026-08-11 08:07'
+updated_date: '2026-08-11 08:22'
 labels:
   - ui
 dependencies: []
@@ -20,7 +20,13 @@ ReplyIntentに.autoを追加(メッセージから最適な返信意図をモデ
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 パネル表示と同時に生成が始まる(チップ操作不要)
-- [ ] #2 チップ/自由指示/トーン変更で現在の生成をキャンセルして再生成する
-- [ ] #3 既存テスト+新規テストが全て通る
+- [x] #1 パネル表示と同時に生成が始まる(チップ操作不要)
+- [x] #2 チップ/自由指示/トーン変更で現在の生成をキャンセルして再生成する
+- [x] #3 既存テスト+新規テストが全て通る
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+実装完了・101テスト。体感確認はユーザーのswift run待ち
+<!-- SECTION:NOTES:END -->

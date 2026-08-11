@@ -80,14 +80,14 @@ replierは構造でこれを解決する:
    │ ③ 丁寧   「お世話になっております。…」        │
    └────────────────────────────────────────┘
         │
-④ 意図を選ぶと3案が同時ストリーミング生成
-⑤ ↑↓で選択 / Tabで編集 / Enterで元アプリにペースト / Escでキャンセル
+④ パネル出現と同時に自動意図で3案の生成が開始(ゼロクリック)。1案目が完成した時点から確定可能(逐次表示)。意図チップ・トーンは再生成のトリガー
+⑤ ↑↓で選択 / Enterで元アプリにペースト(残りの生成はキャンセル) / Escでキャンセル
 ⑥ (任意)「この返信を学習」→ 文体プロファイルに蓄積
 ```
 
 - 選択テキストが取得できない場合はクリップボード(直前の⌘C)にフォールバック
 - 前面アプリを自動判定し、Slackならカジュアル・メールなら丁寧、のアプリ別デフォルトトーンを適用
-- 生成は1リクエストで3案(サブスク消費を抑える。app-server常駐によりプロセス起動の待ちはない)
+- 生成は1リクエストで3案(サブスク消費を抑える)。出力は `<<<short>>>` 区切りテキスト契約で逐次パースし、完成した案から順に確定可能。app-serverは起動時プリウォーム済み
 
 ### 4.2 オンボーディング
 
@@ -264,7 +264,7 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | ホットキー | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) | 実績豊富、設定画面用のレコーダーUI同梱 |
 | テキスト取得/ペースト | `AXUIElement` / `CGEvent` の自前薄ラッパー | 各数十行で済み、依存を増やす価値がない |
 | LLM連携 | `codex app-server --listen stdio://` を常駐spawn + 自前JSON-RPC 2.0クライアント | Swiftからは自前実装が最短(公式SDKはTS/Pythonのみ)。イベントは `AsyncStream` でUIへ |
-| 生成モデル | デフォルト `gpt-5.6-luna` / reasoning effort `xhigh`(UserDefaultsで変更可) | 品質優先のユーザー指定(2026-08-11)。レイテンシが気になる場合はeffortを設定で下げる |
+| 生成モデル | デフォルト `gpt-5.6-luna` / reasoning effort `low`(UserDefaultsで変更可) | 当初xhighだったが実利用で遅く、lowへ変更(2026-08-11)。品質を上げたい場合は設定でeffortを上げる |
 | 永続化 | UserDefaults(設定)+ JSONファイル(文体サンプル) | MVPのデータ量では最速・最容易。編集diff蓄積が増えるP2でGRDB(SQLite)へ移行 |
 | プロジェクト構成 | `ReplierCore` SPMパッケージ(プロンプト組立・JSON-RPC・バックエンド抽象)+ 薄いアプリターゲット | コアをUI非依存にしてTDD可能に。ビルドも高速 |
 | テスト | Swift Testing(`@Test`) | 標準・高速。Coreパッケージを単体テスト、AppKit外殻は薄く保ち手動確認 |
