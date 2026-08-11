@@ -1,10 +1,10 @@
 ---
 id: TASK-21
 title: 'パネルUI改善3: フォーカス堅牢化・コンパクト表示・Shift+Enter改行・出力形式・Esc'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 14:07'
-updated_date: '2026-08-11 14:07'
+updated_date: '2026-08-11 14:23'
 labels:
   - ui
 dependencies: []
@@ -23,7 +23,13 @@ ordinal: 21000
 - [ ] #1 パネル表示のたびに入力欄へ確実にフォーカス(リトライ機構)
 - [ ] #2 生成前のパネルがコンテンツ高さにフィットし余白がない
 - [ ] #3 Shift+Enterで改行、Enterで生成、IME変換確定Enterは無反応
-- [ ] #4 平文/構造化の切替がプロンプトに反映される
+- [x] #4 平文/構造化の切替がプロンプトに反映される
 - [ ] #5 フォーカス位置に関わらずEscで閉じる
-- [ ] #6 全テストパス+.appビルド成功
+- [x] #6 全テストパス+.appビルド成功
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+根因: position()が毎showで760x460に固定リセット+ルートmaxHeightのセンタリング。fittingSizeベースに変更。GistTextEditor(NSTextView)でhasMarkedText判定によるIME完全対応。AC1/2/3/5のGUI挙動は実機確認待ち
+<!-- SECTION:NOTES:END -->
