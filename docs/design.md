@@ -42,7 +42,7 @@ easy-replierは構造でこれを解決する:
 | D1 | サーバーレス・ローカル完結 | 無料配布の持続可能性とプライバシー訴求。チーム機能等は作りにくいが個人向けMVPでは不要 |
 | D2 | LLMアクセスは `codex app-server` 常駐プロセス経由 | サードパーティ統合が公式に想定された文書化済みプロトコル。`chatgpt`/`apikey` 両認証モードを単一統合面で扱え、常駐のためコールドスタートなし。仕様変更はアダプタ層で吸収し、Ollamaフォールバックを常備 |
 | D3 | MVPは「選択テキスト」ベース | Gmail/Slack APIのOAuth連携なしで全アプリに対応できる。スレッド全体の文脈はユーザーの選択範囲に依存するが、P3で直接連携を追加 |
-| D4 | ネイティブSwift実装 | Accessibility API・CGEvent・グローバルホットキー・低メモリ常駐が必須要件のため。Electron/Tauriは不採用 |
+| D4 | AppKitシェル + SwiftUIビューのハイブリッド | 非アクティブ化NSPanel・AX API・CGEvent・グローバルホットキーはAppKit必須(全体の1〜2割)。UIの8割はSwiftUIで開発速度を確保。Electron/Tauriは性能・ネイティブAPI到達性の両面で不採用 |
 | D5 | MVPはOpenAI固定 | 統合面を1本に絞り実装・検証コストを最小化。Claude等のマルチプロバイダ対応はアダプタ層の追加実装としてP2以降 |
 
 ---
@@ -175,7 +175,7 @@ easy-replierは構造でこれを解決する:
 
 | コンテナ | 技術 | 責務 |
 |---|---|---|
-| UI Shell | SwiftUI (NSStatusItem + NSPanel) | グローバルホットキー、フローティングパネル、設定画面、オンボーディング |
+| UI Shell | AppKit外殻 + SwiftUI (NSHostingView) | グローバルホットキー、非アクティブ化フローティングパネル、設定画面、オンボーディング |
 | Context Capture | Swift + Accessibility API | 前面アプリ判定、選択テキスト取得、クリップボードフォールバック、アプリ種別分類 |
 | Draft Orchestrator | Swift(コアロジック) | プロンプト組立(文脈+意図+文体)、バックエンド選択、ストリーミング処理、リトライ |
 | Provider Adapter | Swift protocol + 実装群 | LLMバックエンドの抽象化。app-serverのspawn・死活監視・JSON-RPCクライアント、Ollama、(P2)Claude |
@@ -249,12 +249,21 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 
 ---
 
-## 8. 技術スタック(想定)
+## 8. 技術スタック
 
-- 言語/UI: Swift 6 / SwiftUI(メニューバー常駐、NSPanelフローティング)
-- ホットキー: Carbon `RegisterEventHotKey` or KeyboardShortcuts(ライブラリ)
-- テキスト取得: `AXUIElement`(kAXSelectedTextAttribute)+ NSPasteboardフォールバック
-- ペースト: CGEvent(⌘V合成)+ クリップボード退避復元
-- LLM連携: Foundation `Process` で `codex app-server --listen stdio://` を常駐spawn + JSON-RPC 2.0クライアント(Swift自前実装。TypeScript/Python SDKは不要)
-- ストア: SQLite(GRDB)
-- 配布: notarized DMG / Homebrew Cask(無料・OSS想定)
+方針: **体感速度が命の外殻はネイティブAppKit、開発速度が命のUIとロジックはSwiftUI + SPMパッケージ**。
+レイテンシの支配項はLLM推論なので、それ以外(パネル表示・テキスト取得・ペースト)はすべて知覚不能なレベルに抑える。常駐メモリ約40MB・ホットキー→パネル表示50ms未満を目標(Electron系は常駐300MB超でこの水準に届かないため不採用、D4)。
+
+| 層 | 選定 | 理由 |
+|---|---|---|
+| 言語 | Swift 6(async/await) | AX / CGEvent / NSPanelへ直アクセス。ネイティブ起動・低メモリ |
+| アプリ外殻 | AppKit: `NSStatusItem` + `NSPanel`(`.nonactivatingPanel`) | ホストアプリをアクティブに保ったままキー入力を受ける(UX成立の要)。SwiftUI単体では不可 |
+| UI | SwiftUI(`NSHostingView` でパネルに搭載) | パネル内・設定・オンボーディングの開発最速。ストリーミング描画は `@Observable` + `AsyncStream` |
+| 状態管理 | vanilla `@Observable`(TCA等は不採用) | この規模にアーキテクチャフレームワークは過剰 |
+| ホットキー | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) | 実績豊富、設定画面用のレコーダーUI同梱 |
+| テキスト取得/ペースト | `AXUIElement` / `CGEvent` の自前薄ラッパー | 各数十行で済み、依存を増やす価値がない |
+| LLM連携 | `codex app-server --listen stdio://` を常駐spawn + 自前JSON-RPC 2.0クライアント | Swiftからは自前実装が最短(公式SDKはTS/Pythonのみ)。イベントは `AsyncStream` でUIへ |
+| 永続化 | UserDefaults(設定)+ JSONファイル(文体サンプル) | MVPのデータ量では最速・最容易。編集diff蓄積が増えるP2でGRDB(SQLite)へ移行 |
+| プロジェクト構成 | `EasyReplierCore` SPMパッケージ(プロンプト組立・JSON-RPC・バックエンド抽象)+ 薄いアプリターゲット | コアをUI非依存にしてTDD可能に。ビルドも高速 |
+| テスト | Swift Testing(`@Test`) | 標準・高速。Coreパッケージを単体テスト、AppKit外殻は薄く保ち手動確認 |
+| 配布 | Developer ID署名 + notarization、DMG、Homebrew Cask | 無料配布。自動更新は必要になったらSparkle(P2) |
