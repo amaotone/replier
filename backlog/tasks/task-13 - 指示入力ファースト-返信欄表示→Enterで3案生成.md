@@ -1,10 +1,10 @@
 ---
 id: TASK-13
 title: '指示入力ファースト: 返信欄表示→Enterで3案生成'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 08:33'
-updated_date: '2026-08-11 08:33'
+updated_date: '2026-08-11 08:41'
 labels:
   - ui
 dependencies: []
@@ -20,7 +20,7 @@ ordinal: 13000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 パネル表示時に指示入力欄にフォーカスがあり自動生成されない
-- [ ] #2 Enterで生成開始(空=auto、入力あり=要旨として反映)
-- [ ] #3 effortデフォルトがminimal、設定にnoneが選択肢にある
+- [x] #1 パネル表示時に指示入力欄にフォーカスがあり自動生成されない
+- [x] #2 Enterで生成開始(空=auto、入力あり=要旨として反映)
+- [x] #3 effortデフォルトがminimal、設定にnoneが選択肢にある
 <!-- AC:END -->

@@ -1,10 +1,10 @@
 ---
 id: TASK-14
 title: 確定時はクリップボードコピーに変更
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 08:33'
-updated_date: '2026-08-11 08:33'
+updated_date: '2026-08-11 08:41'
 labels:
   - ui
 dependencies: []
@@ -20,6 +20,6 @@ ordinal: 14000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 確定で候補テキストがクリップボードに入りパネルが閉じる
-- [ ] #2 自動ペーストが呼ばれない
+- [x] #1 確定で候補テキストがクリップボードに入りパネルが閉じる
+- [x] #2 自動ペーストが呼ばれない
 <!-- AC:END -->

@@ -80,8 +80,8 @@ replierは構造でこれを解決する:
    │ ③ 丁寧   「お世話になっております。…」        │
    └────────────────────────────────────────┘
         │
-④ パネル出現と同時に自動意図で3案の生成が開始(ゼロクリック)。1案目が完成した時点から確定可能(逐次表示)。意図チップ・トーンは再生成のトリガー
-⑤ ↑↓で選択 / Enterで元アプリにペースト(残りの生成はキャンセル) / Escでキャンセル
+④ 指示入力欄にフォーカス。返信の要旨を一言入力してEnterで3案生成(空Enterはおまかせ)。1案目が完成した時点から確定可能(逐次表示)。意図チップはワンタップ生成のショートカット
+⑤ ↑↓で選択 / Enter(⌘Enterはフォーカスに関わらず確定)でクリップボードにコピーして閉じる(残りの生成はキャンセル) / Escでキャンセル
 ⑥ (任意)「この返信を学習」→ 文体プロファイルに蓄積
 ```
 
@@ -179,7 +179,7 @@ replierは構造でこれを解決する:
 | Context Capture | Swift + Accessibility API | 前面アプリ判定、選択テキスト取得、クリップボードフォールバック、アプリ種別分類 |
 | Draft Orchestrator | Swift(コアロジック) | プロンプト組立(文脈+意図+文体)、バックエンド選択、ストリーミング処理、リトライ |
 | Provider Adapter | Swift protocol + 実装群 | LLMバックエンドの抽象化。app-serverのspawn・死活監視・JSON-RPCクライアント、Ollama、(P2)Claude |
-| Output Injector | Swift + CGEvent | 元アプリへのペースト、クリップボードの退避・復元 |
+| Output Injector | Swift + NSPasteboard | 確定候補のクリップボードコピー(⌘V自動ペーストは将来オプション、Paster.swiftとして温存) |
 | Style Profile Store | SQLite (GRDB) | 文体サンプル、下書き/最終版diff、アプリ別トーン設定。すべてローカル |
 | codex app-server | Codex付属(外部・OpenAI管理) | LLM推論の実行。全Codexサーフェス共通の公式JSON-RPC 2.0サービス。`~/.codex` の認証を自分で参照 |
 
@@ -264,7 +264,7 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | ホットキー | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) | 実績豊富、設定画面用のレコーダーUI同梱 |
 | テキスト取得/ペースト | `AXUIElement` / `CGEvent` の自前薄ラッパー | 各数十行で済み、依存を増やす価値がない |
 | LLM連携 | `codex app-server --listen stdio://` を常駐spawn + 自前JSON-RPC 2.0クライアント | Swiftからは自前実装が最短(公式SDKはTS/Pythonのみ)。イベントは `AsyncStream` でUIへ |
-| 生成モデル | デフォルト `gpt-5.6-luna` / reasoning effort `low`(UserDefaultsで変更可) | 当初xhighだったが実利用で遅く、lowへ変更(2026-08-11)。品質を上げたい場合は設定でeffortを上げる |
+| 生成モデル | デフォルト `gpt-5.6-luna` / reasoning effort `minimal`(none〜xhighを設定で選択可) | 短文整形にreasoningはほぼ不要。xhigh→low→minimalと実利用で調整(2026-08-11)。noneも実機で動作確認済み |
 | 永続化 | UserDefaults(設定)+ JSONファイル(文体サンプル) | MVPのデータ量では最速・最容易。編集diff蓄積が増えるP2でGRDB(SQLite)へ移行 |
 | プロジェクト構成 | `ReplierCore` SPMパッケージ(プロンプト組立・JSON-RPC・バックエンド抽象)+ 薄いアプリターゲット | コアをUI非依存にしてTDD可能に。ビルドも高速 |
 | テスト | Swift Testing(`@Test`) | 標準・高速。Coreパッケージを単体テスト、AppKit外殻は薄く保ち手動確認 |
