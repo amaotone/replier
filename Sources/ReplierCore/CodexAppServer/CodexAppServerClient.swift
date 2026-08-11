@@ -53,6 +53,12 @@ public actor CodexAppServerClient {
         "--disable", "shell_tool",
         // Removes the underlying unified-exec mechanism backing shell/apply-patch tool calls.
         "--disable", "unified_exec",
+        // Text-only turns need no extra tool surfaces; each adds tool definitions to the turn.
+        "--disable", "apps",
+        "--disable", "browser_use",
+        "--disable", "browser_use_external",
+        "--disable", "in_app_browser",
+        "--disable", "computer_use",
     ]
 
     /// `-c mcp_servers={}` doesn't clear a non-empty `mcp_servers` table (see `baseArguments`),
