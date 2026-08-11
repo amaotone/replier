@@ -1,9 +1,10 @@
 ---
 id: TASK-19
 title: '.appバンドル化: XcodeGenプロジェクトとローカル配布'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-11 09:22'
+updated_date: '2026-08-11 13:14'
 labels:
   - shell
 dependencies:

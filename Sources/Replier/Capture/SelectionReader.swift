@@ -1,6 +1,8 @@
 import AppKit
 import ApplicationServices
+#if canImport(ReplierCore)
 import ReplierCore
+#endif
 
 struct CapturedSelection: Sendable {
     let text: String

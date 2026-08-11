@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
+#if canImport(ReplierCore)
 import ReplierCore
+#endif
 
 /// Hosts `OnboardingView` in a regular, closable window. Showing it temporarily raises
 /// the app's activation policy to `.regular` (so it can gain focus/Dock presence like a

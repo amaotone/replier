@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(ReplierCore)
 import ReplierCore
+#endif
 
 /// Yields a canned sentinel-delimited response in chunks so the panel UI is demo-able
 /// before real Codex wiring lands. The chunking deliberately splits the `<<<long>>>`

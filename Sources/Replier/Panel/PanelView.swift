@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(ReplierCore)
 import ReplierCore
+#endif
 
 /// Keyboard/focus scheme (Japanese IME safe):
 /// - Instruction field: plain Return submits via `.onSubmit` (SwiftUI's onSubmit does not

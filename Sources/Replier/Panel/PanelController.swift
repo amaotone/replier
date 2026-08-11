@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
+#if canImport(ReplierCore)
 import ReplierCore
+#endif
 
 @MainActor
 final class PanelController {

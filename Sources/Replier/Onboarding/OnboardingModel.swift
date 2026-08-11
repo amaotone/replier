@@ -1,7 +1,9 @@
 import AppKit
 import Foundation
 import Observation
+#if canImport(ReplierCore)
 import ReplierCore
+#endif
 
 @MainActor
 @Observable

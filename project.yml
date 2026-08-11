@@ -1,0 +1,52 @@
+name: Replier
+
+options:
+  minimumXcodeGenVersion: 2.38.0
+
+packages:
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 2.0.0
+
+settings:
+  MACOSX_DEPLOYMENT_TARGET: "15.0"
+  SWIFT_VERSION: "6.0"
+  CODE_SIGN_STYLE: Automatic
+  CODE_SIGN_IDENTITY: "-"
+  ENABLE_HARDENED_RUNTIME: NO
+
+targets:
+  Replier:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    # ReplierCore compiled directly into this target (not consumed as a local SPM
+    # package product): the root Package.swift also vends an executable product
+    # named "Replier" from the same path, which collides with this target's
+    # auto-generated scheme when added as a package dependency. See README.
+    sources:
+      - path: Sources/Replier
+      - path: Sources/ReplierCore
+    dependencies:
+      - package: KeyboardShortcuts
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.amaotone.replier
+        PRODUCT_NAME: Replier
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_HARDENED_RUNTIME: NO
+    info:
+      path: Generated/Replier-Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleIdentifier: dev.amaotone.replier
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        CFBundleName: Replier
+        CFBundleDisplayName: Replier
+        CFBundlePackageType: APPL
+        NSHumanReadableCopyright: "Copyright © 2026 amaotone. All rights reserved."
+        NSPrincipalClass: NSApplication
