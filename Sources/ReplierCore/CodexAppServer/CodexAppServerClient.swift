@@ -27,6 +27,82 @@ public actor CodexAppServerClient {
         self.injectedTransport = transport
     }
 
+    /// Flags applied to every `codex app-server` spawn, independent of which servers the user
+    /// has configured. All verified accepted by codex 0.147.0 (an unrecognized `--disable` name
+    /// or config value exits the process immediately, so nothing here is speculative).
+    static let baseArguments: [String] = [
+        // Documents intent, but is a no-op against a populated `mcp_servers` table: codex's `-c`
+        // overrides deep-merge into the base config rather than replacing it, so merging `{}`
+        // (no keys) changes nothing. Superseded by the per-server `enabled=false` overrides
+        // computed in `mcpServerDisableArguments`, which is what actually stops each server.
+        "-c", "mcp_servers={}",
+        // Removes the web_search tool definition from the turn's tool list.
+        "-c", "web_search=\"disabled\"",
+        // Opts out of codex's own ~/.codex/history.jsonl log (distinct from, and in addition to,
+        // the per-thread `ephemeral` flag set in draftReplies below).
+        "-c", "history.persistence=\"none\"",
+        // Skips lifecycle hook (SessionStart/UserPromptSubmit/Stop/...) lookup and execution.
+        "--disable", "hooks",
+        // Skips loading/injecting every configured plugin's tool defs and instructions;
+        // measured as the single largest contributor to turn latency in this set.
+        "--disable", "plugins",
+        // Skips scanning ~/.codex/skills to build the skill-discovery tool.
+        "--disable", "skill_search",
+        // Removes the shell/exec tool definition (the client declines every exec approval
+        // anyway; this stops it from being offered to the model in the first place).
+        "--disable", "shell_tool",
+        // Removes the underlying unified-exec mechanism backing shell/apply-patch tool calls.
+        "--disable", "unified_exec",
+    ]
+
+    /// `-c mcp_servers={}` doesn't clear a non-empty `mcp_servers` table (see `baseArguments`),
+    /// so each server configured in `$CODEX_HOME/config.toml` must be disabled by name. This is
+    /// the only override verified to actually stop connection attempts (including OAuth token
+    /// refreshes for remote servers and process spawns for local stdio servers).
+    static func mcpServerDisableArguments(codexHome: URL) -> [String] {
+        configuredMCPServerNames(codexHome: codexHome).flatMap { name in
+            ["-c", "mcp_servers.\(name).enabled=false"]
+        }
+    }
+
+    /// Reads (never writes) `$CODEX_HOME/config.toml` to discover configured MCP server names.
+    static func configuredMCPServerNames(codexHome: URL) -> [String] {
+        let configURL = codexHome.appendingPathComponent("config.toml")
+        guard let text = try? String(contentsOf: configURL, encoding: .utf8) else { return [] }
+        return mcpServerNames(fromConfigTOML: text)
+    }
+
+    /// Extracts top-level `[mcp_servers.<name>]` table names from raw TOML text: matches bare
+    /// (unquoted) keys only and anchors the closing `]` so nested tables like
+    /// `[mcp_servers.linear.tools.save_issue]` aren't mistaken for a server named "linear.tools".
+    /// Quoted server names (`[mcp_servers."my server"]`) are intentionally skipped: codex's `-c`
+    /// dotted-path parser doesn't understand quoted segments and hard-fails startup if given one
+    /// (verified), so silently omitting them is safer than emitting a flag that could break app
+    /// launch for an edge case not present in typical configs.
+    static func mcpServerNames(fromConfigTOML text: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: #"^\[mcp_servers\.([A-Za-z0-9_-]+)\]\s*$"#)
+        else { return [] }
+        var names: [String] = []
+        text.enumerateLines { line, _ in
+            let range = NSRange(line.startIndex..<line.endIndex, in: line)
+            guard
+                let match = regex.firstMatch(in: line, range: range),
+                let nameRange = Range(match.range(at: 1), in: line)
+            else { return }
+            names.append(String(line[nameRange]))
+        }
+        return names
+    }
+
+    /// Mirrors codex's own `$CODEX_HOME` resolution (env var, falling back to `~/.codex`) so the
+    /// config file we read to discover MCP server names matches what the spawned process loads.
+    static func resolveCodexHome() -> URL {
+        if let override = ProcessInfo.processInfo.environment["CODEX_HOME"], !override.isEmpty {
+            return URL(fileURLWithPath: override)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
+    }
+
     /// Probes common install locations, then falls back to a login-shell `which codex`
     /// lookup (GUI apps do not inherit a full interactive-shell `PATH`, e.g. mise shims).
     public static func locateExecutable() -> URL? {
@@ -75,11 +151,13 @@ public actor CodexAppServerClient {
             else {
                 throw CodexClientError.codexExecutableNotFound
             }
-            // replier only generates text; keep the user's MCP servers out of this process
-            transport = try ProcessTransport(
-                executableURL: executableURL,
-                arguments: ["app-server", "-c", "mcp_servers={}"]
-            )
+            // replier only runs one text-only turn per launch; strip MCP/hooks/plugins/skills/
+            // tool-definition overhead not needed for that (see baseArguments and
+            // mcpServerDisableArguments for the rationale behind each flag).
+            let codexHome = Self.resolveCodexHome()
+            let arguments =
+                ["app-server"] + Self.baseArguments + Self.mcpServerDisableArguments(codexHome: codexHome)
+            transport = try ProcessTransport(executableURL: executableURL, arguments: arguments)
         }
 
         let connection = JSONRPCConnection(transport: transport)
@@ -128,7 +206,11 @@ public actor CodexAppServerClient {
         }
 
         let threadParams: JSONValue = .object([
-            "developerInstructions": .string(prompt.system)
+            "developerInstructions": .string(prompt.system),
+            // Keeps this thread's prompt/reply out of ~/.codex/sessions rollout files entirely
+            // (verified: more effective for this than the `history.persistence="none"` spawn
+            // flag, which only covers the separate history.jsonl log).
+            "ephemeral": .bool(true),
         ])
         let threadResponse = try await connection.requestRaw(method: CodexMethod.threadStart, params: threadParams)
         guard case .string(let threadId)? = threadResponse["thread"]?["id"] else {

@@ -56,6 +56,7 @@ import Testing
         let threadStartFrame = transport.sentJSON(at: 2)
         #expect(threadStartFrame?["method"] == .string("thread/start"))
         #expect(threadStartFrame?["params"]?["developerInstructions"] == .string("be terse"))
+        #expect(threadStartFrame?["params"]?["ephemeral"] == .bool(true))
         guard case .number(let threadRequestId)? = threadStartFrame?["id"] else {
             Issue.record("thread/start request missing numeric id")
             return
@@ -362,5 +363,66 @@ import Testing
         let response = transport.sentJSON(at: 2)
         #expect(response?["id"] == .number(43))
         #expect(response?["result"]?["decision"] == .string("decline"))
+    }
+
+    @Test func mcpServerNamesExtractsTopLevelBareKeyTableNames() {
+        let toml = """
+            model = "gpt-5.6-luna"
+
+            [mcp_servers.mobile-mcp]
+            command = "npx"
+
+            [mcp_servers.linear]
+            url = "https://mcp.linear.app/mcp"
+
+            [mcp_servers.linear.tools.save_issue]
+            approval_mode = "approve"
+
+            [mcp_servers.node_repl.env]
+            SOME_VAR = "1"
+
+            [sandbox_workspace_write]
+            network_access = true
+            """
+
+        let names = CodexAppServerClient.mcpServerNames(fromConfigTOML: toml)
+
+        #expect(names == ["mobile-mcp", "linear"])
+    }
+
+    @Test func mcpServerNamesSkipsQuotedKeysAndReturnsEmptyWhenNoneConfigured() {
+        let toml = """
+            model = "gpt-5.6-luna"
+
+            [mcp_servers."my server"]
+            command = "npx"
+            """
+
+        #expect(CodexAppServerClient.mcpServerNames(fromConfigTOML: toml) == [])
+        #expect(CodexAppServerClient.mcpServerNames(fromConfigTOML: "model = \"gpt-5.6-luna\"") == [])
+    }
+
+    @Test func mcpServerDisableArgumentsBuildsOneOverridePerConfiguredServer() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let configURL = tempDir.appendingPathComponent("config.toml")
+        try """
+            [mcp_servers.pencil]
+            command = "pencil-mcp"
+
+            [mcp_servers.linear]
+            url = "https://mcp.linear.app/mcp"
+            """.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let arguments = CodexAppServerClient.mcpServerDisableArguments(codexHome: tempDir)
+
+        #expect(arguments == ["-c", "mcp_servers.pencil.enabled=false", "-c", "mcp_servers.linear.enabled=false"])
+    }
+
+    @Test func mcpServerDisableArgumentsIsEmptyWhenConfigFileIsMissing() {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        #expect(CodexAppServerClient.mcpServerDisableArguments(codexHome: tempDir) == [])
     }
 }
