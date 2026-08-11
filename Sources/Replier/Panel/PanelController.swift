@@ -10,14 +10,16 @@ final class PanelController {
     /// The panel is capped at this fraction of the target screen's visible height; beyond
     /// that, candidate text scrolls inside its card instead of growing the panel further.
     private static let maxHeightFraction: CGFloat = 0.7
+    /// Delays (seconds) for the post-open focus retry loop; see `retryFocus`.
+    private static let focusRetryDelays: [TimeInterval] = [0, 0.1, 0.3]
 
     private var panel: FloatingPanel?
     private var resizeObserver: NSObjectProtocol?
-    /// Top edge and horizontal center recorded at `position(_:screen:)` time. SwiftUI content
-    /// growth (via `NSHostingView.sizingOptions = .preferredContentSize`) resizes the panel
-    /// automatically but keeps its bottom-left corner fixed by default; `reanchor(_:)`
-    /// corrects the frame on every resize so the panel instead grows downward from where it
-    /// first appeared.
+    /// Top edge and horizontal center recorded at `position(_:hostingView:screen:)` time.
+    /// SwiftUI content growth (via `NSHostingView.sizingOptions = .preferredContentSize`)
+    /// resizes the panel automatically but keeps its bottom-left corner fixed by default;
+    /// `reanchor(_:)` corrects the frame on every resize so the panel instead grows downward
+    /// from where it first appeared.
     private var anchorTopY: CGFloat = 0
     private var anchorCenterX: CGFloat = 0
     private let drafter: any ReplyDrafting
@@ -66,7 +68,7 @@ final class PanelController {
             hostingView.sizingOptions = .preferredContentSize
             panel.contentView = hostingView
 
-            self.position(panel, screen: screen)
+            self.position(panel, hostingView: hostingView, screen: screen)
             self.observeResize(of: panel)
 
             panel.orderFrontRegardless()
@@ -74,9 +76,13 @@ final class PanelController {
             // Bumped after the panel is key so PanelView's `.onChange(of:)` handler (not
             // `.onAppear`, which fires too early) can reliably refocus the instruction field.
             model.requestFocus()
+            self.retryFocus(panel: panel, model: model, hostingView: hostingView)
         }
     }
 
+    /// Idempotent: `orderOut(nil)` on an already-hidden panel is a harmless no-op, which
+    /// matters now that Esc can be handled both by `FloatingPanel.onCancel` and by SwiftUI's
+    /// own `.onKeyPress(.escape)` for the same keypress.
     func hide() {
         panel?.orderOut(nil)
     }
@@ -94,15 +100,22 @@ final class PanelController {
     }
 
     private func makePanel() -> FloatingPanel {
-        FloatingPanel(contentRect: NSRect(origin: .zero, size: Self.initialSize))
+        let panel = FloatingPanel(contentRect: NSRect(origin: .zero, size: Self.initialSize))
+        panel.onCancel = { [weak self] in self?.hide() }
+        return panel
     }
 
-    /// Positions the panel centered horizontally at roughly the top third of `screen`, and
-    /// records the top edge + horizontal center as anchors for `reanchor(_:)`.
-    private func position(_ panel: FloatingPanel, screen: NSScreen?) {
+    /// Positions the panel centered horizontally at roughly the top third of `screen`, sized
+    /// to `hostingView`'s natural fitting height (fixed width) instead of a hardcoded guess.
+    /// This is what makes the panel actually contract back down to a short composing view
+    /// instead of retaining a previous session's taller frame. Records the top edge +
+    /// horizontal center as anchors for `reanchor(_:)`.
+    private func position(_ panel: FloatingPanel, hostingView: NSHostingView<PanelView>, screen: NSScreen?) {
         guard let frame = screen?.visibleFrame else { return }
 
-        let size = Self.initialSize
+        hostingView.layoutSubtreeIfNeeded()
+        let fittingHeight = hostingView.fittingSize.height
+        let size = NSSize(width: Self.initialSize.width, height: max(fittingHeight, 1))
         let originX = frame.origin.x + (frame.width - size.width) / 2
         let originY = frame.origin.y + frame.height - frame.height / 3 - size.height / 2
 
@@ -146,5 +159,34 @@ final class PanelController {
     private func screenWithMouse() -> NSScreen? {
         let mouseLocation = NSEvent.mouseLocation
         return NSScreen.screens.first { $0.frame.contains(mouseLocation) }
+    }
+
+    /// Focus sometimes doesn't stick right after `makeKey()` (the hosting view's layout may
+    /// not have settled yet). Retries at increasing delays, each re-bumping
+    /// `model.focusRequest` (SwiftUI path) and directly locating + focusing the instruction
+    /// editor's `NSTextView` (AppKit fallback) — stops as soon as it already holds focus.
+    private func retryFocus(panel: FloatingPanel, model: PanelModel, hostingView: NSView, attempt: Int = 0) {
+        guard attempt < Self.focusRetryDelays.count else { return }
+
+        let delay = Self.focusRetryDelays[attempt]
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak panel, weak model, weak hostingView] in
+            guard let self, let panel, let model, let hostingView else { return }
+            guard panel.firstResponder as? NSTextView == nil else { return }
+
+            model.requestFocus()
+            if let textView = Self.findTextView(in: hostingView) {
+                panel.makeFirstResponder(textView)
+            }
+
+            self.retryFocus(panel: panel, model: model, hostingView: hostingView, attempt: attempt + 1)
+        }
+    }
+
+    private static func findTextView(in view: NSView) -> NSTextView? {
+        if let textView = view as? NSTextView { return textView }
+        for subview in view.subviews {
+            if let found = findTextView(in: subview) { return found }
+        }
+        return nil
     }
 }

@@ -15,6 +15,9 @@ public final class PanelModel {
     public let sourceApp: SourceApp
     public var tone: Tone
     public var situation: Situation
+    /// No auto-regeneration on change (same rule as `tone`/`situation`) — takes effect at
+    /// the next explicit generation.
+    public var format: OutputFormat = .plain
     /// The 返信欄 text: the user's one-line gist/instruction for the reply. Bound
     /// directly by `PanelView`'s instruction field and read by `submit()`.
     public var instruction: String = ""
@@ -64,7 +67,8 @@ public final class PanelModel {
             gist: gist,
             tone: tone,
             situation: situation,
-            style: style
+            style: style,
+            format: format
         )
 
         generationTask = Task { @MainActor [weak self] in

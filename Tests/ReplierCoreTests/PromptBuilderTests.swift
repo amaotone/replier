@@ -10,14 +10,16 @@ import Testing
         gist: String = "承諾する返信を作成してください。",
         tone: Tone = .business,
         situation: Situation = .mail,
-        samples: [String] = []
+        samples: [String] = [],
+        format: OutputFormat = .plain
     ) -> ReplyRequest {
         ReplyRequest(
             context: CapturedContext(text: text, sourceApp: sourceApp),
             gist: gist,
             tone: tone,
             situation: situation,
-            style: StyleProfile(samples: samples)
+            style: StyleProfile(samples: samples),
+            format: format
         )
     }
 
@@ -65,6 +67,16 @@ import Testing
         let prompt = builder.build(request(situation: .mail))
         #expect(prompt.system.contains("宛名"))
         #expect(prompt.system.contains("結び"))
+    }
+
+    @Test func systemPromptReflectsPlainFormat() {
+        let prompt = builder.build(request(format: .plain))
+        #expect(prompt.system.contains("通常の文章として書く"))
+    }
+
+    @Test func systemPromptReflectsStructuredFormat() {
+        let prompt = builder.build(request(format: .structured))
+        #expect(prompt.system.contains("箇条書きや番号リストを積極的に使い"))
     }
 
     @Test func systemPromptOmitsStyleSectionWhenSamplesEmpty() {

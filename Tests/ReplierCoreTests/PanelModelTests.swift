@@ -219,6 +219,32 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         }
     }
 
+    @Test func formatDefaultsToPlain() {
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: StubDrafter(chunks: []),
+            style: StyleProfile()
+        )
+        #expect(model.format == .plain)
+    }
+
+    @Test func changingFormatDoesNotStartGeneration() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.format = .structured
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(drafter.callCount == 0)
+    }
+
     @Test func submitStartsGenerationImmediatelyAndPassesGistThroughToDrafter() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
@@ -252,6 +278,22 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         model.submit()
         try await waitUntilOnMain { model.phase == .ready }
         #expect(drafter.capturedRequest?.situation == .chat)
+    }
+
+    @Test func submitPassesFormatThroughToDrafter() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+        model.format = .structured
+
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
+        try await waitUntilOnMain { model.phase == .ready }
+        #expect(drafter.capturedRequest?.format == .structured)
     }
 
     @Test func submitEndsReadyWithTwoParsedCandidatesAndShortSelected() async throws {

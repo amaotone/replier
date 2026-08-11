@@ -31,6 +31,7 @@ public struct PromptBuilder: Sendable {
             """,
             toneInstruction(for: request.tone),
             situationInstruction(for: request.situation),
+            formatInstruction(for: request.format),
         ]
 
         if let styleSection = styleInstruction(for: request.style) {
@@ -55,6 +56,15 @@ public struct PromptBuilder: Sendable {
             return "送信先はメールです。メールの作法に従い、宛名と結びの言葉を適切に含めてください。"
         case .chat:
             return "送信先はチャットです。チャット向けの短い文体にし、挨拶や署名は不要です。"
+        }
+    }
+
+    private func formatInstruction(for format: OutputFormat) -> String {
+        switch format {
+        case .plain:
+            return "出力形式: 通常の文章として書く。"
+        case .structured:
+            return "出力形式: 箇条書きや番号リストを積極的に使い、要点が一目で分かる構造にする。"
         }
     }
 

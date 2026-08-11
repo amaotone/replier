@@ -9,7 +9,8 @@ import Testing
             gist: "承諾する返信を作成してください。",
             tone: .business,
             situation: .mail,
-            style: StyleProfile()
+            style: StyleProfile(),
+            format: .plain
         )
     }
 

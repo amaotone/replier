@@ -22,6 +22,11 @@ public enum Tone: String, Sendable, Codable, CaseIterable {
     case business, casual
 }
 
+/// How the reply body should be structured, chosen by the user in the panel.
+public enum OutputFormat: String, Sendable, Codable, CaseIterable {
+    case plain, structured
+}
+
 public struct StyleProfile: Sendable, Codable, Equatable {
     public var samples: [String]
 
@@ -37,13 +42,22 @@ public struct ReplyRequest: Sendable, Equatable {
     public let tone: Tone
     public let situation: Situation
     public let style: StyleProfile
+    public let format: OutputFormat
 
-    public init(context: CapturedContext, gist: String, tone: Tone, situation: Situation, style: StyleProfile) {
+    public init(
+        context: CapturedContext,
+        gist: String,
+        tone: Tone,
+        situation: Situation,
+        style: StyleProfile,
+        format: OutputFormat
+    ) {
         self.context = context
         self.gist = gist
         self.tone = tone
         self.situation = situation
         self.style = style
+        self.format = format
     }
 }
 
