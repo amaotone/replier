@@ -235,4 +235,78 @@ import Testing
         ]))
         for try await _ in stream {}
     }
+
+    @Test func prewarmThenDraftSendsOnlyOneInitializeHandshake() async throws {
+        let transport = InMemoryTransport()
+        let client = CodexAppServerClient(transport: transport)
+        let drafter = CodexReplyDrafter(client: client)
+
+        async let prewarmResult: Void = drafter.prewarm()
+
+        try await waitUntil { !transport.sentFrames.isEmpty }
+        guard case .number(let initId)? = transport.sentJSON(at: 0)?["id"] else {
+            Issue.record("initialize request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(initId),
+            "result": .object([
+                "codexHome": .string("/tmp/codex-home"),
+                "platformFamily": .string("unix"),
+                "platformOs": .string("macos"),
+                "userAgent": .string("codex-test"),
+            ]),
+        ]))
+        await prewarmResult
+
+        try await waitUntil { transport.sentFrames.count >= 2 }
+        #expect(initializeFrameCount(in: transport) == 1)
+
+        async let streamResult = drafter.draft(request())
+
+        try await waitUntil { transport.sentFrames.count >= 3 }
+        let threadStartFrame = transport.sentJSON(at: 2)
+        #expect(threadStartFrame?["method"] == .string("thread/start"))
+        guard case .number(let threadRequestId)? = threadStartFrame?["id"] else {
+            Issue.record("thread/start request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(threadRequestId),
+            "result": .object(["thread": .object(["id": .string("thread-1")])]),
+        ]))
+
+        try await waitUntil { transport.sentFrames.count >= 4 }
+        guard case .number(let turnRequestId)? = transport.sentJSON(at: 3)?["id"] else {
+            Issue.record("turn/start request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(turnRequestId),
+            "result": .object(["turn": .object(["id": .string("turn-1")])]),
+        ]))
+
+        let stream = try await streamResult
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "method": .string("turn/completed"),
+            "params": .object([
+                "threadId": .string("thread-1"),
+                "turn": .object(["id": .string("turn-1"), "status": .string("completed"), "items": .array([])]),
+            ]),
+        ]))
+        for try await _ in stream {}
+
+        #expect(initializeFrameCount(in: transport) == 1)
+    }
+
+    private func initializeFrameCount(in transport: InMemoryTransport) -> Int {
+        transport.sentFrames
+            .compactMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }
+            .filter { $0["method"] == .string("initialize") }
+            .count
+    }
 }

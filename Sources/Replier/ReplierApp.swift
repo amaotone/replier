@@ -10,6 +10,7 @@ final class AppContainer {
     init() {
         let useMock = ProcessInfo.processInfo.arguments.contains("--mock")
         let drafter: any ReplyDrafting = useMock ? MockReplyDrafter() : CodexReplyDrafter()
+        Task { await drafter.prewarm() }
 
         let styleProfileStore = StyleProfileStore(directory: StyleProfileStore.defaultDirectory())
 

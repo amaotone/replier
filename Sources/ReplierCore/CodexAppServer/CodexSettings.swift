@@ -8,7 +8,7 @@ public enum CodexSettings {
     public static let reasoningEffortDefaultsKey = "codexReasoningEffort"
 
     public static let defaultModel = "gpt-5.6-luna"
-    public static let defaultReasoningEffort = "xhigh"
+    public static let defaultReasoningEffort = "low"
 
     /// `TurnStartParams.effort` (see `docs/reference/app-server-schema/v2/TurnStartParams.json`)
     /// types `ReasoningEffort` as a non-empty, model-advertised string rather than a fixed

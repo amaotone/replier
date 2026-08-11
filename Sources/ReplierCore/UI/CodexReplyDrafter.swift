@@ -44,4 +44,12 @@ public final class CodexReplyDrafter: ReplyDrafting {
             effort: CodexSettings.currentReasoningEffort(in: userDefaults)
         )
     }
+
+    /// Best-effort: starts the client eagerly so the first real `draft` skips the cold
+    /// start. `client.start()` is actor-isolated and no-ops past its first `connection`
+    /// assignment, so a prewarm racing a real `draft` still starts the process once.
+    public func prewarm() async {
+        guard let client else { return }
+        try? await client.start()
+    }
 }
