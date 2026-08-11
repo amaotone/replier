@@ -42,7 +42,7 @@ easy-replierは構造でこれを解決する:
 | D1 | サーバーレス・ローカル完結 | 無料配布の持続可能性とプライバシー訴求。チーム機能等は作りにくいが個人向けMVPでは不要 |
 | D2 | LLMアクセスは `codex app-server` 常駐プロセス経由 | サードパーティ統合が公式に想定された文書化済みプロトコル。`chatgpt`/`apikey` 両認証モードを単一統合面で扱え、常駐のためコールドスタートなし。仕様変更はアダプタ層で吸収し、Ollamaフォールバックを常備 |
 | D3 | MVPは「選択テキスト」ベース | Gmail/Slack APIのOAuth連携なしで全アプリに対応できる。スレッド全体の文脈はユーザーの選択範囲に依存するが、P3で直接連携を追加 |
-| D4 | AppKitシェル + SwiftUIビューのハイブリッド | 非アクティブ化NSPanel・AX API・CGEvent・グローバルホットキーはAppKit必須(全体の1〜2割)。UIの8割はSwiftUIで開発速度を確保。Electron/Tauriは性能・ネイティブAPI到達性の両面で不採用 |
+| D4 | Swift/SwiftUIで統一。SwiftUIに相当APIがないOS機能のみAppKit APIを直接呼ぶ | アプリ本体はSwiftUI Appライフサイクル + `MenuBarExtra`。非アクティブ化NSPanel・AX読取・CGEvent・ホットキーはユーティリティ3ファイル(約150行)に隔離。言語・ツールチェーン・UIパラダイムは単一。Electron/Tauriは性能・ネイティブAPI到達性の両面で不採用 |
 | D5 | MVPはOpenAI固定 | 統合面を1本に絞り実装・検証コストを最小化。Claude等のマルチプロバイダ対応はアダプタ層の追加実装としてP2以降 |
 
 ---
@@ -175,7 +175,7 @@ easy-replierは構造でこれを解決する:
 
 | コンテナ | 技術 | 責務 |
 |---|---|---|
-| UI Shell | AppKit外殻 + SwiftUI (NSHostingView) | グローバルホットキー、非アクティブ化フローティングパネル、設定画面、オンボーディング |
+| UI Shell | SwiftUI (MenuBarExtra + NSPanel搭載ビュー) | グローバルホットキー、非アクティブ化フローティングパネル、設定画面、オンボーディング |
 | Context Capture | Swift + Accessibility API | 前面アプリ判定、選択テキスト取得、クリップボードフォールバック、アプリ種別分類 |
 | Draft Orchestrator | Swift(コアロジック) | プロンプト組立(文脈+意図+文体)、バックエンド選択、ストリーミング処理、リトライ |
 | Provider Adapter | Swift protocol + 実装群 | LLMバックエンドの抽象化。app-serverのspawn・死活監視・JSON-RPCクライアント、Ollama、(P2)Claude |
@@ -257,8 +257,9 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | 層 | 選定 | 理由 |
 |---|---|---|
 | 言語 | Swift 6(async/await) | AX / CGEvent / NSPanelへ直アクセス。ネイティブ起動・低メモリ |
-| アプリ外殻 | AppKit: `NSStatusItem` + `NSPanel`(`.nonactivatingPanel`) | ホストアプリをアクティブに保ったままキー入力を受ける(UX成立の要)。SwiftUI単体では不可 |
-| UI | SwiftUI(`NSHostingView` でパネルに搭載) | パネル内・設定・オンボーディングの開発最速。ストリーミング描画は `@Observable` + `AsyncStream` |
+| アプリ本体 | SwiftUI Appライフサイクル + `MenuBarExtra` | メニューバー常駐・設定・オンボーディングまでSwiftUIで完結 |
+| フローティングパネル | `NSPanel`(`.nonactivatingPanel`)サブクラス約80行 + `NSHostingView` | ホストアプリをアクティブに保ったままキー入力を受ける(UX成立の要)。SwiftUIに相当APIなし |
+| UI | SwiftUI(パネル内含む全ビュー) | ストリーミング描画は `@Observable` + `AsyncStream` |
 | 状態管理 | vanilla `@Observable`(TCA等は不採用) | この規模にアーキテクチャフレームワークは過剰 |
 | ホットキー | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) | 実績豊富、設定画面用のレコーダーUI同梱 |
 | テキスト取得/ペースト | `AXUIElement` / `CGEvent` の自前薄ラッパー | 各数十行で済み、依存を増やす価値がない |
