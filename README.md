@@ -27,23 +27,13 @@ Codexアプリ・CLI・IDE拡張のいずれかで既にログイン済みであ
 
 1. [Releases](https://github.com/amaotone/replier/releases)から最新の`Replier-vX.Y.Z.dmg`をダウンロード(zipでの配布もあり)
 2. dmgを開き、`Replier.app`を`Applications`へドラッグ
-3. 初回起動時に「**"Replier"は、マルウェアが含まれていないことをAppleで確認できないため、開けません**」という警告が出る。これは配布物が未公証(ad-hoc署名)のための警告で、マルウェア検出ではない。macOS 15以降では右クリック→「開く」での回避が廃止されているため、次の手順で許可する:
-   1. 警告ダイアログを閉じる
-   2. **システム設定 → プライバシーとセキュリティ** を開き、下部の「"Replier"はブロックされました」の隣の「**このまま開く**」をクリックして認証
-   3. もう一度 `Replier.app` を開く
-
-   コマンド派はターミナルで以下を実行してもよい(ダウンロード時の隔離属性を外す):
-
-   ```sh
-   xattr -cr /Applications/Replier.app
-   ```
-
-   (v0.2.0以降はnotarized配布となり、この手順は不要になる予定)
-
-4. メニューバーのアイコンから起動し、オンボーディングでアクセシビリティ権限を許可する
+3. `Replier.app` を開く(v0.2.0以降はApple公証済みのため、警告なしでそのまま起動できる)
+4. オンボーディングでアクセシビリティ権限を許可する
 5. 動作には[Codex CLI](https://developers.openai.com/codex)のログインが必要。詳細は上記「動作要件」を参照
 
-将来的にはnotarized配布やHomebrew Caskでのインストールに対応する予定。
+v0.1.0(未公証ビルド)を使う場合のみ、初回起動時にGatekeeper警告が出る。その場合は警告を閉じてから **システム設定 → プライバシーとセキュリティ → 「このまま開く」** で許可する(macOS 15以降では右クリック→「開く」での回避は廃止されている)。
+
+将来的にはHomebrew Caskでのインストールに対応する予定。
 
 ## ソースからビルド(開発者向け)
 
@@ -55,7 +45,7 @@ cd replier
 Scripts/build-app.sh
 ```
 
-ビルドが成功すると`dist/Replier.app`が生成されるので、`/Applications`にコピーして使う。Gatekeeper警告への対処は上記「インストール」の手順3を参照。dmgとして配布したい場合は`Scripts/make-dmg.sh`で`dist/Replier.dmg`を生成できる。
+ビルドが成功すると`dist/Replier.app`が生成されるので、`/Applications`にコピーして使う(ローカルビルドは隔離属性が付かないためGatekeeper警告は出ない)。dmgとして配布したい場合は`Scripts/make-dmg.sh`で`dist/Replier.dmg`を生成できる。
 
 署名IDは環境変数`REPLIER_SIGN_IDENTITY`で切り替えられる(デフォルトは`-`、ad-hoc署名)。Developer ID Application証明書を保有している場合は`REPLIER_SIGN_IDENTITY="Developer ID Application" Scripts/build-app.sh`でnotarization向けの署名済みビルドを作れる。
 
