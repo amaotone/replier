@@ -16,11 +16,11 @@ public final class PanelModel {
     public var tone: Tone
     public var situation: Situation
     /// The 返信欄 text: the user's one-line gist/instruction for the reply. Bound
-    /// directly by `PanelView`'s instruction field and read by `submitInstruction()`.
+    /// directly by `PanelView`'s instruction field and read by `submit()`.
     public var instruction: String = ""
     public private(set) var partials: [PartialCandidate] = []
     public private(set) var selectedIndex: Int = 0
-    public private(set) var lastIntent: ReplyIntent?
+    public private(set) var lastGist: String?
     /// Bumped by `PanelController.show()` right after the panel becomes key. `PanelView`
     /// observes this via `.onChange` to reliably refocus the instruction field on every
     /// open/reopen — a plain SwiftUI `.onAppear` fires before a non-activating `NSPanel`
@@ -45,15 +45,15 @@ public final class PanelModel {
         focusRequest += 1
     }
 
-    /// Cancels any in-flight generation and starts a new one. Safe to call while a
-    /// generation is already streaming (e.g. a second chip tap acting as "regenerate").
-    /// Tone/situation edits do NOT call this — they only update state, taking effect at
-    /// the next explicit generation.
-    public func choose(intent: ReplyIntent) {
+    /// Cancels any in-flight generation and starts a new one with the given gist. Safe to
+    /// call while a generation is already streaming (e.g. a second preset tap acting as
+    /// "regenerate"). Tone/situation edits do NOT call this — they only update state,
+    /// taking effect at the next explicit generation.
+    private func generate(gist: String) {
         generationTask?.cancel()
         currentGeneration += 1
         let generation = currentGeneration
-        lastIntent = intent
+        lastGist = gist
 
         phase = .generating
         partials = []
@@ -61,7 +61,7 @@ public final class PanelModel {
 
         let request = ReplyRequest(
             context: CapturedContext(text: contextText, sourceApp: sourceApp),
-            intent: intent,
+            gist: gist,
             tone: tone,
             situation: situation,
             style: style
@@ -72,19 +72,26 @@ public final class PanelModel {
         }
     }
 
-    /// Re-runs generation with whatever intent was last used. No-op if nothing has been
-    /// generated yet (e.g. called from the "やり直す" retry button before any `choose`).
+    /// Re-runs generation with whatever gist was last used. No-op if nothing has been
+    /// generated yet (e.g. called from the "やり直す" retry button before any `submit`).
     public func regenerate() {
-        guard let lastIntent else { return }
-        choose(intent: lastIntent)
+        guard let lastGist else { return }
+        generate(gist: lastGist)
     }
 
-    /// Submits the current `instruction` text as a `.custom` intent. Empty/whitespace
-    /// text is a no-op and leaves `phase` unchanged — there is no おまかせ(auto) fallback.
-    public func submitInstruction() {
+    /// Submits the current `instruction` text. Empty/whitespace text is a no-op and
+    /// leaves `phase` unchanged — there is no おまかせ(auto) fallback.
+    public func submit() {
         let trimmed = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        choose(intent: .custom(trimmed))
+        generate(gist: trimmed)
+    }
+
+    /// Sets `instruction` to a preset gist and immediately generates, so the user sees
+    /// what was used and can edit + resubmit.
+    public func applyPreset(_ gist: String) {
+        instruction = gist
+        generate(gist: gist)
     }
 
     private func isStale(_ generation: Int) -> Bool {

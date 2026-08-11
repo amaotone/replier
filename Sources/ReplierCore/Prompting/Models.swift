@@ -18,11 +18,6 @@ public struct CapturedContext: Sendable, Equatable {
     }
 }
 
-public enum ReplyIntent: Sendable, Equatable {
-    case accept, decline, question, followUp
-    case custom(String)
-}
-
 public enum Tone: String, Sendable, Codable, CaseIterable {
     case business, casual
 }
@@ -37,14 +32,15 @@ public struct StyleProfile: Sendable, Codable, Equatable {
 
 public struct ReplyRequest: Sendable, Equatable {
     public let context: CapturedContext
-    public let intent: ReplyIntent
+    /// The user's one-line gist/instruction for what the reply should say.
+    public let gist: String
     public let tone: Tone
     public let situation: Situation
     public let style: StyleProfile
 
-    public init(context: CapturedContext, intent: ReplyIntent, tone: Tone, situation: Situation, style: StyleProfile) {
+    public init(context: CapturedContext, gist: String, tone: Tone, situation: Situation, style: StyleProfile) {
         self.context = context
-        self.intent = intent
+        self.gist = gist
         self.tone = tone
         self.situation = situation
         self.style = style

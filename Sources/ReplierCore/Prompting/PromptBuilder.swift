@@ -76,22 +76,7 @@ public struct PromptBuilder: Sendable {
         \(request.context.text)
 
         # 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)
-        \(intentInstruction(for: request.intent))
+        \(request.gist)
         """
-    }
-
-    private func intentInstruction(for intent: ReplyIntent) -> String {
-        switch intent {
-        case .accept:
-            return "承諾する返信を作成してください。"
-        case .decline:
-            return "丁重に断る返信を作成してください。"
-        case .question:
-            return "不明点を確認する返信を作成してください。"
-        case .followUp:
-            return "後で改めて連絡する旨の返信を作成してください。"
-        case .custom(let instruction):
-            return "次の要旨・指示に沿って返信を作成してください: \(instruction)"
-        }
     }
 }

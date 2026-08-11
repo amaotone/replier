@@ -7,14 +7,14 @@ import Testing
     private func request(
         text: String = "明日の会議、参加できますか？",
         sourceApp: SourceApp = .mail,
-        intent: ReplyIntent = .accept,
+        gist: String = "承諾する返信を作成してください。",
         tone: Tone = .business,
         situation: Situation = .mail,
         samples: [String] = []
     ) -> ReplyRequest {
         ReplyRequest(
             context: CapturedContext(text: text, sourceApp: sourceApp),
-            intent: intent,
+            gist: gist,
             tone: tone,
             situation: situation,
             style: StyleProfile(samples: samples)
@@ -84,29 +84,9 @@ import Testing
         #expect(prompt.user.contains("来週火曜、空いてますか？"))
     }
 
-    @Test func userPromptReflectsAcceptIntent() {
-        let prompt = builder.build(request(intent: .accept))
-        #expect(prompt.user.contains("承諾する返信"))
-    }
-
-    @Test func userPromptReflectsDeclineIntent() {
-        let prompt = builder.build(request(intent: .decline))
-        #expect(prompt.user.contains("丁重に断る返信"))
-    }
-
-    @Test func userPromptReflectsQuestionIntent() {
-        let prompt = builder.build(request(intent: .question))
-        #expect(prompt.user.contains("不明点を確認する返信"))
-    }
-
-    @Test func userPromptReflectsFollowUpIntent() {
-        let prompt = builder.build(request(intent: .followUp))
-        #expect(prompt.user.contains("後で改めて連絡する旨の返信"))
-    }
-
-    @Test func userPromptFramesCustomIntentAsGistInstruction() {
-        let prompt = builder.build(request(intent: .custom("英語で、少しユーモアを交えて返信してください")))
-        #expect(prompt.user.contains("次の要旨・指示に沿って返信を作成してください: 英語で、少しユーモアを交えて返信してください"))
+    @Test func userPromptRendersGistDirectly() {
+        let prompt = builder.build(request(gist: "英語で、少しユーモアを交えて返信してください"))
+        #expect(prompt.user.contains("英語で、少しユーモアを交えて返信してください"))
     }
 
     @Test func systemPromptDefinesRoleModelForIncomingMessageAndGist() {
@@ -137,18 +117,11 @@ import Testing
         #expect(headingRange.upperBound <= textRange.lowerBound)
     }
 
-    @Test func userPromptStructuresCustomInstructionUnderSecondHeadingAndDoesNotAnswerIt() {
-        let prompt = builder.build(request(intent: .custom("もっと簡潔に話してよ。わかりにくすぎる")))
+    @Test func userPromptStructuresGistUnderSecondHeadingAndDoesNotAnswerIt() {
+        let prompt = builder.build(request(gist: "もっと簡潔に話してよ。わかりにくすぎる"))
         #expect(prompt.user.contains("# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)"))
         let headingRange = prompt.user.range(of: "# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)")!
-        let instructionRange = prompt.user.range(of: "もっと簡潔に話してよ。わかりにくすぎる")!
-        #expect(headingRange.upperBound <= instructionRange.lowerBound)
-    }
-
-    @Test func userPromptSecondHeadingAppliesUniformlyAcrossFixedIntents() {
-        for intent in [ReplyIntent.accept, .decline, .question, .followUp] {
-            let prompt = builder.build(request(intent: intent))
-            #expect(prompt.user.contains("# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)"))
-        }
+        let gistRange = prompt.user.range(of: "もっと簡潔に話してよ。わかりにくすぎる")!
+        #expect(headingRange.upperBound <= gistRange.lowerBound)
     }
 }

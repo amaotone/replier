@@ -219,7 +219,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         }
     }
 
-    @Test func chooseStartsGenerationImmediatelyAndPassesThroughToDrafter() async throws {
+    @Test func submitStartsGenerationImmediatelyAndPassesGistThroughToDrafter() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -228,16 +228,17 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
-        // choose() returns synchronously already in .generating, before the background
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
+        // submit() returns synchronously already in .generating, before the background
         // generation task has necessarily run.
         #expect(model.phase == .generating || model.phase == .ready)
 
         try await waitUntilOnMain { model.phase == .ready }
-        #expect(drafter.capturedRequest?.intent == .accept)
+        #expect(drafter.capturedRequest?.gist == "承諾する返信を作成してください。")
     }
 
-    @Test func choosePassesSituationThroughToDrafter() async throws {
+    @Test func submitPassesSituationThroughToDrafter() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -247,12 +248,13 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         )
         model.situation = .chat
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
         #expect(drafter.capturedRequest?.situation == .chat)
     }
 
-    @Test func chooseEndsReadyWithTwoParsedCandidatesAndShortSelected() async throws {
+    @Test func submitEndsReadyWithTwoParsedCandidatesAndShortSelected() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "会議の件、了解しました",
@@ -261,7 +263,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
 
         #expect(model.partials.count == 2)
@@ -271,7 +274,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(model.partials.allSatisfy { $0.isComplete })
     }
 
-    @Test func choosePassesThroughGeneratingWithGrowingPartialsThenReady() async {
+    @Test func submitPassesThroughGeneratingWithGrowingPartialsThenReady() async {
         let chunks = chunked(validSentinelText, size: 6)
         let drafter = DelayedDrafter(chunks: chunks)
         let model = PanelModel(
@@ -281,7 +284,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
 
         var observedCounts: [Int] = []
         for _ in 0..<800 {
@@ -309,7 +313,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
 
         #expect(model.partials.count == 1)
@@ -325,7 +330,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain {
             if case .failed = model.phase { return true }
             return false
@@ -340,7 +346,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain {
             if case .failed = model.phase { return true }
             return false
@@ -357,7 +364,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
         #expect(model.selectedIndex == 0)
 
@@ -380,7 +388,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.partials.count == 2 }
 
         #expect(model.selectedIndex == 0)
@@ -409,7 +418,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.partials.count == 2 }
 
         #expect(model.partials[0].isComplete)
@@ -429,7 +439,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
         #expect(model.selectedText == "了解です。")
 
@@ -445,7 +456,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain {
             if case .failed = model.phase { return true }
             return false
@@ -456,26 +468,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(model.partials.isEmpty)
     }
 
-    @Test func chooseWithCustomIntentPassesInstructionThroughToDrafter() async throws {
-        let drafter = StubDrafter(chunks: chunked(validSentinelText))
-        let model = PanelModel(
-            contextText: "hello",
-            sourceApp: .mail,
-            drafter: drafter,
-            style: StyleProfile()
-        )
-
-        model.choose(intent: .custom("英語で返信してください"))
-        try await waitUntilOnMain { model.phase == .ready }
-
-        guard case .custom(let instruction) = drafter.capturedRequest?.intent else {
-            Issue.record("expected custom intent to be captured")
-            return
-        }
-        #expect(instruction == "英語で返信してください")
-    }
-
-    @Test func submitInstructionWithTextPassesCustomIntentToDrafter() async throws {
+    @Test func submitPassesInstructionThroughToDrafterAsGist() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -485,17 +478,13 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         )
 
         model.instruction = "英語で返信してください"
-        model.submitInstruction()
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
 
-        guard case .custom(let instruction) = drafter.capturedRequest?.intent else {
-            Issue.record("expected custom intent to be captured")
-            return
-        }
-        #expect(instruction == "英語で返信してください")
+        #expect(drafter.capturedRequest?.gist == "英語で返信してください")
     }
 
-    @Test func submitInstructionWithEmptyTextIsNoOp() async throws {
+    @Test func submitWithEmptyTextIsNoOp() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -505,7 +494,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         )
 
         model.instruction = "   "
-        model.submitInstruction()
+        model.submit()
 
         try await Task.sleep(for: .milliseconds(50))
 
@@ -514,7 +503,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(drafter.callCount == 0)
     }
 
-    @Test func submitInstructionDuringGenerationCancelsPreviousAndStartsNew() async throws {
+    @Test func submitDuringGenerationCancelsPreviousAndStartsNew() async throws {
         let drafter = SequencedDrafter(behaviors: [
             .hang(firstChunk: "<<<short>>>\n古い生成中\n"),
             .complete(chunks: chunked(validSentinelText)),
@@ -527,12 +516,12 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         )
 
         model.instruction = "最初の指示"
-        model.submitInstruction()
+        model.submit()
         try await waitUntilOnMain { !model.partials.isEmpty }
         #expect(model.partials.first?.text == "古い生成中")
 
         model.instruction = "新しい指示"
-        model.submitInstruction()
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
 
         #expect(model.partials.count == 2)
@@ -540,7 +529,24 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(drafter.cancelledCallIndices.contains(0))
     }
 
-    @Test func regenerateCancelsPreviousGenerationAndReflectsOnlyTheNewOne() async throws {
+    @Test func applyPresetSetsInstructionAndGeneratesImmediately() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.applyPreset("わかりました")
+        #expect(model.instruction == "わかりました")
+        #expect(model.phase == .generating || model.phase == .ready)
+
+        try await waitUntilOnMain { model.phase == .ready }
+        #expect(drafter.capturedRequest?.gist == "わかりました")
+    }
+
+    @Test func applyPresetWhilePreviousGenerationStuckCancelsItAndReflectsOnlyTheNewOne() async throws {
         let drafter = SequencedDrafter(behaviors: [
             .hang(firstChunk: "<<<short>>>\n古い生成中\n"),
             .complete(chunks: chunked(validSentinelText)),
@@ -552,14 +558,15 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.applyPreset("わかりました")
         try await waitUntilOnMain { !model.partials.isEmpty }
         #expect(model.partials.first?.text == "古い生成中")
 
-        // Simulates clicking an intent chip while the first generation is still stuck.
-        model.choose(intent: .decline)
+        // Simulates tapping another preset while the first generation is still stuck.
+        model.applyPreset("ごめんなさい")
         try await waitUntilOnMain { model.phase == .ready }
 
+        #expect(model.instruction == "ごめんなさい")
         #expect(model.partials.count == 2)
         #expect(model.partials[0].text == "了解です。")
         #expect(drafter.cancelledCallIndices.contains(0))
@@ -581,6 +588,23 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(drafter.callCount == 0)
     }
 
+    @Test func regenerateReusesLastGistAfterApplyPreset() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.applyPreset("確認します")
+        try await waitUntilOnMain { model.phase == .ready }
+
+        model.regenerate()
+        try await waitUntilOnMain { drafter.callCount == 2 }
+        #expect(drafter.capturedRequest?.gist == "確認します")
+    }
+
     @Test func cancellingViaConfirmSelectionDoesNotFlipPhaseToFailed() async throws {
         let drafter = SequencedDrafter(behaviors: [
             .hang(firstChunk: "<<<short>>>\n短めの案\n<<<long>>>\n進行中\n"),
@@ -592,7 +616,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .accept)
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
         try await waitUntilOnMain { model.partials.first?.isComplete == true }
 
         let confirmed = model.confirmSelection()

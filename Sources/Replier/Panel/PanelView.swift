@@ -4,9 +4,16 @@ import ReplierCore
 #endif
 
 /// Keyboard/focus scheme (Japanese IME safe):
-/// - Instruction field: plain Return submits via `.onSubmit` (SwiftUI's onSubmit does not
-///   fire for an IME composition-confirm Enter, so kana→kanji confirmation never triggers
-///   generation). ↑↓ are never intercepted here — IME candidate navigation needs them.
+/// - Instruction field: a multi-line `TextField(axis: .vertical)` showing ~3 lines. On a
+///   native AppKit macOS app (this is not Mac Catalyst) that field type keeps the classic
+///   AppKit field-editor behavior: plain Return still fires `.onSubmit` (not a newline) and
+///   Option+Return inserts a literal newline via the standard `insertNewlineIgnoringFieldEditor:`
+///   key binding — both handled entirely by AppKit/SwiftUI's own Return handling, so no
+///   `onKeyPress(.return)` interception is added here. `.onSubmit` does not fire for an IME
+///   composition-confirm Enter, so kana→kanji confirmation never triggers generation. ↑↓ are
+///   never intercepted here — IME candidate navigation needs them.
+/// - Presets: tapping a preset button sets the instruction text to that preset's gist and
+///   immediately generates, so the user sees what was used and can edit + resubmit.
 /// - ⌘Return confirms the selected candidate from anywhere (Cmd-modified keys are not
 ///   consumed by IME); handled once at the root view and left unhandled everywhere else so
 ///   it bubbles up.
@@ -19,8 +26,14 @@ import ReplierCore
 ///   Return confirms, Esc closes, Tab returns to the field.
 struct PanelView: View {
     @Bindable var model: PanelModel
+    /// Soft cap on the panel's total content height (derived by `PanelController` from the
+    /// target screen's visible frame), so a long generated reply grows the panel but never
+    /// past ~70% of the screen — beyond that, candidate text scrolls inside its card instead.
+    let maxContentHeight: CGFloat
     let onConfirm: (String) -> Void
     let onCancel: () -> Void
+
+    private static let presets = ["わかりました", "ごめんなさい", "確認します", "後で連絡します"]
 
     private enum FocusTarget: Hashable {
         case instruction
@@ -31,14 +44,15 @@ struct PanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            contextPreview
             instructionField
-            intentRow
+            presetsRow
             pickersRow
             Divider()
             contentArea
         }
         .padding(16)
+        .frame(width: 760)
+        .frame(maxHeight: maxContentHeight)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.regularMaterial)
@@ -63,11 +77,12 @@ struct PanelView: View {
     }
 
     private var instructionField: some View {
-        TextField("返信の要旨を一言", text: $model.instruction)
+        TextField("返信の要旨を一言(Option+Enterで改行)", text: $model.instruction, axis: .vertical)
             .textFieldStyle(.roundedBorder)
+            .lineLimit(3...5)
             .focused($focusedTarget, equals: .instruction)
             .onSubmit {
-                model.submitInstruction()
+                model.submit()
             }
             .onKeyPress(.tab) {
                 guard !model.partials.isEmpty else { return .ignored }
@@ -87,40 +102,19 @@ struct PanelView: View {
         return true
     }
 
-    private var contextPreview: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("受信したメッセージ")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextEditor(text: $model.contextText)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .frame(maxHeight: 100)
-                .background(Color.primary.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-    }
-
-    private var intentRow: some View {
+    private var presetsRow: some View {
         HStack(spacing: 8) {
-            intentButton("承諾", intent: .accept)
-            intentButton("お断り", intent: .decline)
-            intentButton("質問", intent: .question)
-            intentButton("後で連絡", intent: .followUp)
+            ForEach(Self.presets, id: \.self) { gist in
+                Button(gist) {
+                    model.applyPreset(gist)
+                }
+                .buttonStyle(.bordered)
+            }
         }
-    }
-
-    private func intentButton(_ title: String, intent: ReplyIntent) -> some View {
-        Button(title) {
-            model.choose(intent: intent)
-        }
-        .buttonStyle(.bordered)
     }
 
     /// Tone/situation only update state here — no regenerate-on-change wiring. They take
-    /// effect at the next explicit generation (Enter or an intent chip).
+    /// effect at the next explicit generation (Enter or a preset tap).
     private var pickersRow: some View {
         HStack(spacing: 12) {
             situationPicker
@@ -245,7 +239,7 @@ struct PanelView: View {
             }
         }
         .padding(10)
-        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 260, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
         .opacity(candidate.isComplete ? 1.0 : 0.7)
         .background(isSelected ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

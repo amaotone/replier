@@ -6,7 +6,7 @@ import Testing
     private func request() -> ReplyRequest {
         ReplyRequest(
             context: CapturedContext(text: "明日の会議の件", sourceApp: .mail),
-            intent: .accept,
+            gist: "承諾する返信を作成してください。",
             tone: .business,
             situation: .mail,
             style: StyleProfile()
