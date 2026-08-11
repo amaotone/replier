@@ -1,10 +1,10 @@
 ---
 id: TASK-29
 title: 'リリース改善: DMG配布 + インストールガイド見直し'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 15:15'
-updated_date: '2026-08-11 15:15'
+updated_date: '2026-08-11 15:19'
 labels:
   - release
 dependencies: []
@@ -20,8 +20,8 @@ ordinal: 29000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 make-dmg.shでApplicationsリンク付きdmgが生成されローカルでマウント検証済み
-- [ ] #2 release.ymlがdmgとzipの両方を添付する
-- [ ] #3 READMEのインストール手順が非開発者にも分かる構成になっている
-- [ ] #4 v0.1.0リリースにdmgが追加されている
+- [x] #1 make-dmg.shでApplicationsリンク付きdmgが生成されローカルでマウント検証済み
+- [x] #2 release.ymlがdmgとzipの両方を添付する
+- [x] #3 READMEのインストール手順が非開発者にも分かる構成になっている
+- [x] #4 v0.1.0リリースにdmgが追加されている
 <!-- AC:END -->
