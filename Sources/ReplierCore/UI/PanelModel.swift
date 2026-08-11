@@ -18,6 +18,8 @@ public final class PanelModel {
     /// No auto-regeneration on change (same rule as `tone`/`situation`) — takes effect at
     /// the next explicit generation.
     public var format: OutputFormat = .plain
+    /// No auto-regeneration on change (same rule as `tone`/`situation`/`format`).
+    public var language: ReplyLanguage = .auto
     /// The 返信欄 text: the user's one-line gist/instruction for the reply. Bound
     /// directly by `PanelView`'s instruction field and read by `submit()`.
     public var instruction: String = ""
@@ -68,7 +70,8 @@ public final class PanelModel {
             tone: tone,
             situation: situation,
             style: style,
-            format: format
+            format: format,
+            language: language
         )
 
         generationTask = Task { @MainActor [weak self] in
@@ -150,5 +153,11 @@ public final class PanelModel {
         guard let text = selectedText else { return nil }
         generationTask?.cancel()
         return text
+    }
+
+    /// Cancels any in-flight generation without touching `phase`/`partials` — same
+    /// cancellation semantics as `confirmSelection()`. A no-op when nothing is running.
+    public func cancelGeneration() {
+        generationTask?.cancel()
     }
 }

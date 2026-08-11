@@ -37,8 +37,9 @@ struct PanelView: View {
 
     /// Approximate height of everything around the candidates area (outer padding,
     /// instruction editor at its max height, pickers, divider) — subtracted from
-    /// `maxContentHeight` to get the candidates area's own cap.
-    private static let chromeHeight: CGFloat = 155
+    /// `maxContentHeight` to get the candidates area's own cap. Sized generously enough to
+    /// cover the pickers row wrapping to two lines (see `pickersRow`).
+    private static let chromeHeight: CGFloat = 180
     private static let minCandidatesHeight: CGFloat = 160
 
     private enum FocusTarget: Hashable {
@@ -102,13 +103,28 @@ struct PanelView: View {
         return true
     }
 
-    /// Tone/situation/format only update state here — no regenerate-on-change wiring. They
-    /// take effect at the next explicit generation (Enter).
+    /// Tone/situation/format/language only update state here — no regenerate-on-change
+    /// wiring. They take effect at the next explicit generation (Enter). Four segmented
+    /// pickers don't reliably fit one 760pt-wide row, so `ViewThatFits` falls back to a
+    /// 2x2 layout whenever the single row would overflow.
     private var pickersRow: some View {
-        HStack(spacing: 12) {
-            situationPicker
-            tonePicker
-            formatPicker
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                situationPicker
+                tonePicker
+                formatPicker
+                languagePicker
+            }
+            VStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    situationPicker
+                    tonePicker
+                }
+                HStack(spacing: 12) {
+                    formatPicker
+                    languagePicker
+                }
+            }
         }
     }
 
@@ -132,6 +148,15 @@ struct PanelView: View {
         Picker("形式", selection: $model.format) {
             Text("平文").tag(OutputFormat.plain)
             Text("構造化").tag(OutputFormat.structured)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var languagePicker: some View {
+        Picker("言語", selection: $model.language) {
+            Text("自動").tag(ReplyLanguage.auto)
+            Text("日本語").tag(ReplyLanguage.japanese)
+            Text("英語").tag(ReplyLanguage.english)
         }
         .pickerStyle(.segmented)
     }

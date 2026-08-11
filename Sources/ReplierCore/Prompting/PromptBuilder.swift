@@ -14,7 +14,6 @@ public struct PromptBuilder: Sendable {
             (短め案の本文)
             <<<long>>>
             (長め案の本文)
-            返信は届いたメッセージと同じ言語で書いてください。
             - short: 1〜2文の簡潔な返信
             - long: 文脈を汲んだより丁寧な返信(3〜6文程度)
             """,
@@ -32,6 +31,7 @@ public struct PromptBuilder: Sendable {
             toneInstruction(for: request.tone),
             situationInstruction(for: request.situation),
             formatInstruction(for: request.format),
+            languageInstruction(for: request.language),
         ]
 
         if let styleSection = styleInstruction(for: request.style) {
@@ -65,6 +65,17 @@ public struct PromptBuilder: Sendable {
             return "出力形式: 通常の文章として書く。"
         case .structured:
             return "出力形式: 箇条書きや番号リストを積極的に使い、要点が一目で分かる構造にする。"
+        }
+    }
+
+    private func languageInstruction(for language: ReplyLanguage) -> String {
+        switch language {
+        case .auto:
+            return "返信は届いたメッセージと同じ言語で書いてください。"
+        case .japanese:
+            return "言語: 必ず日本語で返信してください。"
+        case .english:
+            return "言語: 必ず英語で返信してください。相手のメッセージが日本語であっても、返信は英語で書いてください。"
         }
     }
 

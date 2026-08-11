@@ -15,6 +15,10 @@ final class PanelController {
 
     private var panel: FloatingPanel?
     private var resizeObserver: NSObjectProtocol?
+    private var resignKeyObserver: NSObjectProtocol?
+    /// The model backing whatever is currently shown, so `hide()` can cancel its in-flight
+    /// generation regardless of which path triggered the hide (Esc, confirm, focus loss).
+    private var currentModel: PanelModel?
     /// Top edge and horizontal center recorded at `position(_:hostingView:screen:)` time.
     /// SwiftUI content growth (via `NSHostingView.sizingOptions = .preferredContentSize`)
     /// resizes the panel automatically but keeps its bottom-left corner fixed by default;
@@ -49,6 +53,7 @@ final class PanelController {
                 drafter: self.drafter,
                 style: style
             )
+            self.currentModel = model
 
             let screen = self.screenWithMouse() ?? NSScreen.main
             let visibleHeight = screen?.visibleFrame.height ?? Self.initialSize.height
@@ -82,8 +87,12 @@ final class PanelController {
 
     /// Idempotent: `orderOut(nil)` on an already-hidden panel is a harmless no-op, which
     /// matters now that Esc can be handled both by `FloatingPanel.onCancel` and by SwiftUI's
-    /// own `.onKeyPress(.escape)` for the same keypress.
+    /// own `.onKeyPress(.escape)` for the same keypress — and now that `orderOut` itself can
+    /// resign key status and re-enter here via `observeResignKey`. That re-entrant call finds
+    /// the panel already ordered out (no further resign notification fires) and
+    /// `cancelGeneration()` already idle, so it terminates without looping.
     func hide() {
+        currentModel?.cancelGeneration()
         panel?.orderOut(nil)
     }
 
@@ -102,7 +111,25 @@ final class PanelController {
     private func makePanel() -> FloatingPanel {
         let panel = FloatingPanel(contentRect: NSRect(origin: .zero, size: Self.initialSize))
         panel.onCancel = { [weak self] in self?.hide() }
+        observeResignKey(of: panel)
         return panel
+    }
+
+    /// Spotlight-style auto-hide: clicking into another app/window or ⌘Tabbing away resigns
+    /// the panel's key status, which should close it. Registered once, when the panel is
+    /// created (it's reused for the app's lifetime), rather than on every `show()`.
+    /// `queue: .main` dispatches the block asynchronously even though we're already on the
+    /// main thread, so this never re-enters `hide()` synchronously from within `orderOut`.
+    private func observeResignKey(of panel: FloatingPanel) {
+        resignKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.hide()
+            }
+        }
     }
 
     /// Positions the panel centered horizontally at roughly the top third of `screen`, sized

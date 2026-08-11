@@ -229,6 +229,48 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(model.format == .plain)
     }
 
+    @Test func languageDefaultsToAuto() {
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: StubDrafter(chunks: []),
+            style: StyleProfile()
+        )
+        #expect(model.language == .auto)
+    }
+
+    @Test func changingLanguageDoesNotStartGeneration() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.language = .english
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(drafter.callCount == 0)
+    }
+
+    @Test func submitPassesLanguageThroughToDrafter() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+        model.language = .english
+
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
+        try await waitUntilOnMain { model.phase == .ready }
+        #expect(drafter.capturedRequest?.language == .english)
+    }
+
     @Test func changingFormatDoesNotStartGeneration() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
@@ -628,6 +670,44 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         if case .failed = model.phase {
             Issue.record("cancellation should not result in .failed")
         }
+    }
+
+    @Test func cancelGenerationCancelsStreamAndDoesNotFlipPhaseToFailed() async throws {
+        let drafter = SequencedDrafter(behaviors: [
+            .hang(firstChunk: "<<<short>>>\n短めの案\n<<<long>>>\n進行中\n"),
+        ])
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.instruction = "承諾する返信を作成してください。"
+        model.submit()
+        try await waitUntilOnMain { model.partials.first?.isComplete == true }
+
+        model.cancelGeneration()
+
+        try await waitUntilOnMain { drafter.cancelledCallIndices.contains(0) }
+
+        if case .failed = model.phase {
+            Issue.record("cancellation should not result in .failed")
+        }
+    }
+
+    @Test func cancelGenerationIsHarmlessWhenIdle() {
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: StubDrafter(chunks: []),
+            style: StyleProfile()
+        )
+
+        model.cancelGeneration()
+
+        #expect(model.phase == .composing)
+        #expect(model.partials.isEmpty)
     }
 
     @Test func changingToneDoesNotStartGeneration() async throws {

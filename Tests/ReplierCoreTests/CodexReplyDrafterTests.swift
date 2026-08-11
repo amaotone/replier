@@ -10,7 +10,8 @@ import Testing
             tone: .business,
             situation: .mail,
             style: StyleProfile(),
-            format: .plain
+            format: .plain,
+            language: .auto
         )
     }
 

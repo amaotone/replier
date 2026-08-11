@@ -22,6 +22,11 @@ public enum Tone: String, Sendable, Codable, CaseIterable {
     case business, casual
 }
 
+/// Which language the reply body should be written in, chosen by the user in the panel.
+public enum ReplyLanguage: String, Sendable, Codable, CaseIterable {
+    case auto, japanese, english
+}
+
 /// How the reply body should be structured, chosen by the user in the panel.
 public enum OutputFormat: String, Sendable, Codable, CaseIterable {
     case plain, structured
@@ -43,6 +48,7 @@ public struct ReplyRequest: Sendable, Equatable {
     public let situation: Situation
     public let style: StyleProfile
     public let format: OutputFormat
+    public let language: ReplyLanguage
 
     public init(
         context: CapturedContext,
@@ -50,7 +56,8 @@ public struct ReplyRequest: Sendable, Equatable {
         tone: Tone,
         situation: Situation,
         style: StyleProfile,
-        format: OutputFormat
+        format: OutputFormat,
+        language: ReplyLanguage
     ) {
         self.context = context
         self.gist = gist
@@ -58,6 +65,7 @@ public struct ReplyRequest: Sendable, Equatable {
         self.situation = situation
         self.style = style
         self.format = format
+        self.language = language
     }
 }
 

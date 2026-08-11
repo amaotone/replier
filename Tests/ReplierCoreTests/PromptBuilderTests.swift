@@ -11,7 +11,8 @@ import Testing
         tone: Tone = .business,
         situation: Situation = .mail,
         samples: [String] = [],
-        format: OutputFormat = .plain
+        format: OutputFormat = .plain,
+        language: ReplyLanguage = .auto
     ) -> ReplyRequest {
         ReplyRequest(
             context: CapturedContext(text: text, sourceApp: sourceApp),
@@ -19,7 +20,8 @@ import Testing
             tone: tone,
             situation: situation,
             style: StyleProfile(samples: samples),
-            format: format
+            format: format,
+            language: language
         )
     }
 
@@ -77,6 +79,21 @@ import Testing
     @Test func systemPromptReflectsStructuredFormat() {
         let prompt = builder.build(request(format: .structured))
         #expect(prompt.system.contains("箇条書きや番号リストを積極的に使い"))
+    }
+
+    @Test func systemPromptReflectsAutoLanguage() {
+        let prompt = builder.build(request(language: .auto))
+        #expect(prompt.system.contains("返信は届いたメッセージと同じ言語で書いてください。"))
+    }
+
+    @Test func systemPromptReflectsJapaneseLanguage() {
+        let prompt = builder.build(request(language: .japanese))
+        #expect(prompt.system.contains("必ず日本語で返信してください"))
+    }
+
+    @Test func systemPromptReflectsEnglishLanguage() {
+        let prompt = builder.build(request(language: .english))
+        #expect(prompt.system.contains("必ず英語で返信してください"))
     }
 
     @Test func systemPromptOmitsStyleSectionWhenSamplesEmpty() {
