@@ -49,9 +49,9 @@ public final class PanelModel {
     }
 
     /// Cancels any in-flight generation and starts a new one with the given gist. Safe to
-    /// call while a generation is already streaming (e.g. a second preset tap acting as
-    /// "regenerate"). Tone/situation edits do NOT call this — they only update state,
-    /// taking effect at the next explicit generation.
+    /// call while a generation is already streaming (a re-submit acts as "regenerate").
+    /// Tone/situation edits do NOT call this — they only update state, taking effect at
+    /// the next explicit generation.
     private func generate(gist: String) {
         generationTask?.cancel()
         currentGeneration += 1
@@ -89,13 +89,6 @@ public final class PanelModel {
         let trimmed = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         generate(gist: trimmed)
-    }
-
-    /// Sets `instruction` to a preset gist and immediately generates, so the user sees
-    /// what was used and can edit + resubmit.
-    public func applyPreset(_ gist: String) {
-        instruction = gist
-        generate(gist: gist)
     }
 
     private func isStale(_ generation: Int) -> Bool {

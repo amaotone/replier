@@ -11,8 +11,6 @@ import ReplierCore
 ///   `ReturnAction`/`returnAction(hasMarkedText:shiftPressed:)` in ReplierCore for the exact
 ///   (unit-tested) decision logic. ↑↓ are never intercepted — IME candidate navigation needs
 ///   them.
-/// - Presets: tapping a preset button sets the instruction text to that preset's gist and
-///   immediately generates, so the user sees what was used and can edit + resubmit.
 /// - ⌘Return confirms the selected candidate from anywhere (Cmd-modified keys are not
 ///   consumed by IME); handled once at the root view and left unhandled everywhere else so
 ///   it bubbles up.
@@ -37,11 +35,10 @@ struct PanelView: View {
     let onConfirm: (String) -> Void
     let onCancel: () -> Void
 
-    private static let presets = ["わかりました", "ごめんなさい", "確認します", "後で連絡します"]
     /// Approximate height of everything around the candidates area (outer padding,
-    /// instruction editor at its max height, presets, pickers, divider) — subtracted from
+    /// instruction editor at its max height, pickers, divider) — subtracted from
     /// `maxContentHeight` to get the candidates area's own cap.
-    private static let chromeHeight: CGFloat = 190
+    private static let chromeHeight: CGFloat = 155
     private static let minCandidatesHeight: CGFloat = 160
 
     private enum FocusTarget: Hashable {
@@ -54,7 +51,6 @@ struct PanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             instructionField
-            presetsRow
             pickersRow
             Divider()
             contentArea
@@ -106,19 +102,8 @@ struct PanelView: View {
         return true
     }
 
-    private var presetsRow: some View {
-        HStack(spacing: 8) {
-            ForEach(Self.presets, id: \.self) { gist in
-                Button(gist) {
-                    model.applyPreset(gist)
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-    }
-
     /// Tone/situation/format only update state here — no regenerate-on-change wiring. They
-    /// take effect at the next explicit generation (Enter or a preset tap).
+    /// take effect at the next explicit generation (Enter).
     private var pickersRow: some View {
         HStack(spacing: 12) {
             situationPicker

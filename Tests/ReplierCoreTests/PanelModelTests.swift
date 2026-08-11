@@ -571,49 +571,6 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(drafter.cancelledCallIndices.contains(0))
     }
 
-    @Test func applyPresetSetsInstructionAndGeneratesImmediately() async throws {
-        let drafter = StubDrafter(chunks: chunked(validSentinelText))
-        let model = PanelModel(
-            contextText: "hello",
-            sourceApp: .mail,
-            drafter: drafter,
-            style: StyleProfile()
-        )
-
-        model.applyPreset("わかりました")
-        #expect(model.instruction == "わかりました")
-        #expect(model.phase == .generating || model.phase == .ready)
-
-        try await waitUntilOnMain { model.phase == .ready }
-        #expect(drafter.capturedRequest?.gist == "わかりました")
-    }
-
-    @Test func applyPresetWhilePreviousGenerationStuckCancelsItAndReflectsOnlyTheNewOne() async throws {
-        let drafter = SequencedDrafter(behaviors: [
-            .hang(firstChunk: "<<<short>>>\n古い生成中\n"),
-            .complete(chunks: chunked(validSentinelText)),
-        ])
-        let model = PanelModel(
-            contextText: "hello",
-            sourceApp: .mail,
-            drafter: drafter,
-            style: StyleProfile()
-        )
-
-        model.applyPreset("わかりました")
-        try await waitUntilOnMain { !model.partials.isEmpty }
-        #expect(model.partials.first?.text == "古い生成中")
-
-        // Simulates tapping another preset while the first generation is still stuck.
-        model.applyPreset("ごめんなさい")
-        try await waitUntilOnMain { model.phase == .ready }
-
-        #expect(model.instruction == "ごめんなさい")
-        #expect(model.partials.count == 2)
-        #expect(model.partials[0].text == "了解です。")
-        #expect(drafter.cancelledCallIndices.contains(0))
-    }
-
     @Test func regenerateIsNoOpBeforeAnyGeneration() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
@@ -630,7 +587,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(drafter.callCount == 0)
     }
 
-    @Test func regenerateReusesLastGistAfterApplyPreset() async throws {
+    @Test func regenerateReusesLastGistAfterSubmit() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -639,7 +596,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.applyPreset("確認します")
+        model.instruction = "確認します"
+        model.submit()
         try await waitUntilOnMain { model.phase == .ready }
 
         model.regenerate()
