@@ -11,7 +11,8 @@ public final class CodexReplyDrafter: ReplyDrafting {
         public var description: String {
             switch self {
             case .codexNotFound:
-                return "Codexの実行ファイルが見つかりませんでした。`brew install codex` でインストールしてください。"
+                return "Codexの実行ファイルが見つかりません。Codex CLIをインストールし(`brew install codex` など)、"
+                    + "必要なら設定画面で実行ファイルのパスを指定してください。"
             }
         }
     }

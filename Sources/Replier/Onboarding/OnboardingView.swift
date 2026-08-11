@@ -95,6 +95,9 @@ struct OnboardingView: View {
                     Text("Codexアプリ/CLIでログイン済みなら追加設定は不要です。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Text("インストール済みなのに見つからない場合は、下の「実行ファイルを手動で指定」からパスを指定できます。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             } else if let status = model.codexAccountStatus {
                 if status.isLoggedIn {
@@ -115,10 +118,44 @@ struct OnboardingView: View {
                     .foregroundStyle(.red)
             }
 
-            Button("再チェック") {
-                Task { await model.recheckCodex() }
+            if let path = model.resolvedCodexExecutablePath {
+                HStack(spacing: 4) {
+                    Text("検出パス:")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(path.path)
+                        .font(.system(.caption2, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
             }
-            .disabled(model.codexCheckInProgress)
+
+            if let overridePath = model.codexExecutableOverridePath {
+                HStack(spacing: 4) {
+                    Text("手動指定:")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(overridePath)
+                        .font(.system(.caption2, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("再チェック") {
+                    Task { await model.recheckCodex() }
+                }
+                .disabled(model.codexCheckInProgress)
+
+                Button("実行ファイルを手動で指定") { model.pickCodexExecutable() }
+
+                if model.codexExecutableOverridePath != nil {
+                    Button("クリア") { model.clearCodexExecutableOverride() }
+                }
+            }
 
             Divider()
 

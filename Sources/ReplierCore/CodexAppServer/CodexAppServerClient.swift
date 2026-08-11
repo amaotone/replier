@@ -109,36 +109,14 @@ public actor CodexAppServerClient {
         return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")
     }
 
-    /// Probes common install locations, then falls back to a login-shell `which codex`
-    /// lookup (GUI apps do not inherit a full interactive-shell `PATH`, e.g. mise shims).
-    public static func locateExecutable() -> URL? {
-        let candidates = ["/opt/homebrew/bin/codex", "/usr/local/bin/codex"]
-        for path in candidates where FileManager.default.isExecutableFile(atPath: path) {
-            return URL(fileURLWithPath: path)
-        }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-lc", "which codex"]
-        let stdout = Pipe()
-        process.standardOutput = stdout
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-        } catch {
-            return nil
-        }
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        guard
-            let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-            !output.isEmpty,
-            FileManager.default.isExecutableFile(atPath: output)
-        else { return nil }
-        return URL(fileURLWithPath: output)
+    /// Delegates to `CodexExecutableLocator`, which probes common install locations
+    /// (including Node version manager shims a GUI-launched app's minimal PATH would
+    /// otherwise miss entirely) before falling back to shell probes. `defaults` supplies
+    /// the user's manual override, if any (see `CodexSettings.codexExecutablePath`); a
+    /// stale/nonexistent override is ignored, not fatal — resolution just falls through
+    /// to normal discovery.
+    public static func locateExecutable(in defaults: UserDefaults = .standard) -> URL? {
+        CodexExecutableLocator.locate(overridePath: CodexSettings.codexExecutablePath(in: defaults))
     }
 
     /// Spawns `codex app-server` (stdio transport is the default; no `--listen` flag needed)

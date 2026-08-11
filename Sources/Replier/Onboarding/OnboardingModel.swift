@@ -15,8 +15,10 @@ final class OnboardingModel {
 
     var codexCheckInProgress = false
     var codexExecutableFound = false
+    var resolvedCodexExecutablePath: URL?
     var codexAccountStatus: CodexAccountStatus?
     var codexCheckError: String?
+    var codexExecutableOverridePath: String?
 
     var codexModel: String {
         didSet { UserDefaults.standard.set(codexModel, forKey: CodexSettings.modelDefaultsKey) }
@@ -40,6 +42,7 @@ final class OnboardingModel {
         self.dataControlsConfirmed = UserDefaults.standard.bool(forKey: Self.dataControlsConfirmedKey)
         self.codexModel = CodexSettings.currentModel()
         self.codexReasoningEffort = CodexSettings.currentReasoningEffort()
+        self.codexExecutableOverridePath = CodexSettings.codexExecutablePath()
     }
 
     func refreshAccessibilityStatus() {
@@ -65,9 +68,11 @@ final class OnboardingModel {
 
         guard let executableURL = CodexAppServerClient.locateExecutable() else {
             codexExecutableFound = false
+            resolvedCodexExecutablePath = nil
             return
         }
         codexExecutableFound = true
+        resolvedCodexExecutablePath = executableURL
 
         let client = CodexAppServerClient(executableURL: executableURL)
         do {
@@ -77,6 +82,31 @@ final class OnboardingModel {
             codexCheckError = String(describing: error)
         }
         await client.shutdown()
+    }
+
+    /// Opens a file picker for the user to manually point at their `codex` executable
+    /// (e.g. when auto-detection in `CodexExecutableLocator` misses an unusual install
+    /// layout). Persists the pick to `UserDefaults` and re-resolves immediately so the
+    /// UI reflects the change without a separate "再チェック" click.
+    func pickCodexExecutable() {
+        let panel = NSOpenPanel()
+        panel.title = "codex実行ファイルを選択"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.treatsFilePackagesAsDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        CodexSettings.setCodexExecutablePath(url.path)
+        codexExecutableOverridePath = url.path
+        Task { await recheckCodex() }
+    }
+
+    /// Clears the manual override and re-resolves, falling back to auto-detection.
+    func clearCodexExecutableOverride() {
+        CodexSettings.setCodexExecutablePath(nil)
+        codexExecutableOverridePath = nil
+        Task { await recheckCodex() }
     }
 
     func loadStyleSamples() {
