@@ -52,7 +52,7 @@ jobs:
           NOTES="## インストール方法
 
           1. \`Replier-${GITHUB_REF_NAME}.dmg\` をダウンロードして開き、\`Replier.app\` を \`Applications\` へドラッグ(zip でも可)
-          2. 初回起動時は Gatekeeper 警告が出るため、Finder で Replier.app を右クリック(または Control+クリック)して「開く」を選択(またはターミナルで \`xattr -cr /Applications/Replier.app\`)
+          2. 初回起動時の「マルウェアが含まれていないことを Apple で確認できないため、開けません」は未公証アプリへの Gatekeeper 警告(マルウェア検出ではない)。警告を閉じる → システム設定 → プライバシーとセキュリティ → 「このまま開く」→ 再度起動(またはターミナルで \`xattr -cr /Applications/Replier.app\`)
           3. 起動後のオンボーディングでアクセシビリティ権限を許可
           4. 動作には [Codex CLI](https://developers.openai.com/codex) のインストールとログイン(ChatGPT サブスクまたは API キー)が必要"
           gh release create "${GITHUB_REF_NAME}" \
