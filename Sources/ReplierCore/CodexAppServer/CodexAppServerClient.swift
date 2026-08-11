@@ -75,7 +75,11 @@ public actor CodexAppServerClient {
             else {
                 throw CodexClientError.codexExecutableNotFound
             }
-            transport = try ProcessTransport(executableURL: executableURL, arguments: ["app-server"])
+            // replier only generates text; keep the user's MCP servers out of this process
+            transport = try ProcessTransport(
+                executableURL: executableURL,
+                arguments: ["app-server", "-c", "mcp_servers={}"]
+            )
         }
 
         let connection = JSONRPCConnection(transport: transport)
