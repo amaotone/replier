@@ -108,8 +108,16 @@ public actor CodexAppServerClient {
     /// One-shot: starts a fresh thread, runs one turn with `prompt`, and streams agent-message
     /// text deltas as they arrive. `prompt.system` is passed as `ThreadStartParams.developerInstructions`
     /// (`TurnStartParams` itself has no system/developer-instructions field), and `prompt.user`
-    /// becomes the turn's text input verbatim.
-    public func draftReplies(_ prompt: Prompt) async throws -> AsyncThrowingStream<String, Error> {
+    /// becomes the turn's text input verbatim. `model` and `effort` map directly to
+    /// `TurnStartParams.model` / `TurnStartParams.effort` (see
+    /// `docs/reference/app-server-schema/v2/TurnStartParams.json`), which override the model
+    /// and reasoning effort for this turn; omitted when `nil` so the server falls back to its
+    /// configured defaults.
+    public func draftReplies(
+        _ prompt: Prompt,
+        model: String? = nil,
+        effort: String? = nil
+    ) async throws -> AsyncThrowingStream<String, Error> {
         guard let connection else { throw CodexClientError.notStarted }
         guard activeTurn == nil else {
             throw CodexClientError.turnFailed("a turn is already in progress")
@@ -123,12 +131,15 @@ public actor CodexAppServerClient {
             throw CodexClientError.turnFailed("thread/start response missing thread id")
         }
 
-        let turnParams: JSONValue = .object([
+        var turnParamsFields: [String: JSONValue] = [
             "threadId": .string(threadId),
             "input": .array([
                 .object(["type": .string("text"), "text": .string(prompt.user)])
             ]),
-        ])
+        ]
+        if let model { turnParamsFields["model"] = .string(model) }
+        if let effort { turnParamsFields["effort"] = .string(effort) }
+        let turnParams: JSONValue = .object(turnParamsFields)
         let turnResponse = try await connection.requestRaw(method: CodexMethod.turnStart, params: turnParams)
         guard case .string(let turnId)? = turnResponse["turn"]?["id"] else {
             throw CodexClientError.turnFailed("turn/start response missing turn id")

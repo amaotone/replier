@@ -120,6 +120,99 @@ import Testing
         #expect(collected == ["Hello", ", world"])
     }
 
+    @Test func draftRepliesPassesModelAndEffortInTurnStartParamsWhenProvided() async throws {
+        let transport = InMemoryTransport()
+        let client = try await startedClient(transport)
+
+        let prompt = Prompt(system: "be terse", user: "say hi")
+        async let streamResult: AsyncThrowingStream<String, Error> = client.draftReplies(
+            prompt,
+            model: "gpt-5.6-luna",
+            effort: "xhigh"
+        )
+
+        try await waitUntil { transport.sentFrames.count >= 3 }
+        guard case .number(let threadRequestId)? = transport.sentJSON(at: 2)?["id"] else {
+            Issue.record("thread/start request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(threadRequestId),
+            "result": .object(["thread": .object(["id": .string("thread-1")])]),
+        ]))
+
+        try await waitUntil { transport.sentFrames.count >= 4 }
+        let turnStartFrame = transport.sentJSON(at: 3)
+        #expect(turnStartFrame?["method"] == .string("turn/start"))
+        #expect(turnStartFrame?["params"]?["model"] == .string("gpt-5.6-luna"))
+        #expect(turnStartFrame?["params"]?["effort"] == .string("xhigh"))
+        guard case .number(let turnRequestId)? = turnStartFrame?["id"] else {
+            Issue.record("turn/start request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(turnRequestId),
+            "result": .object(["turn": .object(["id": .string("turn-1")])]),
+        ]))
+
+        let stream = try await streamResult
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "method": .string("turn/completed"),
+            "params": .object([
+                "threadId": .string("thread-1"),
+                "turn": .object(["id": .string("turn-1"), "status": .string("completed"), "items": .array([])]),
+            ]),
+        ]))
+        for try await _ in stream {}
+    }
+
+    @Test func draftRepliesOmitsModelAndEffortKeysWhenNotProvided() async throws {
+        let transport = InMemoryTransport()
+        let client = try await startedClient(transport)
+
+        let prompt = Prompt(system: "be terse", user: "say hi")
+        async let streamResult: AsyncThrowingStream<String, Error> = client.draftReplies(prompt)
+
+        try await waitUntil { transport.sentFrames.count >= 3 }
+        guard case .number(let threadRequestId)? = transport.sentJSON(at: 2)?["id"] else {
+            Issue.record("thread/start request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(threadRequestId),
+            "result": .object(["thread": .object(["id": .string("thread-1")])]),
+        ]))
+
+        try await waitUntil { transport.sentFrames.count >= 4 }
+        let turnStartFrame = transport.sentJSON(at: 3)
+        #expect(turnStartFrame?["params"]?["model"] == nil)
+        #expect(turnStartFrame?["params"]?["effort"] == nil)
+        guard case .number(let turnRequestId)? = turnStartFrame?["id"] else {
+            Issue.record("turn/start request missing numeric id")
+            return
+        }
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "id": .number(turnRequestId),
+            "result": .object(["turn": .object(["id": .string("turn-1")])]),
+        ]))
+
+        let stream = try await streamResult
+        transport.deliver(.object([
+            "jsonrpc": .string("2.0"),
+            "method": .string("turn/completed"),
+            "params": .object([
+                "threadId": .string("thread-1"),
+                "turn": .object(["id": .string("turn-1"), "status": .string("completed"), "items": .array([])]),
+            ]),
+        ]))
+        for try await _ in stream {}
+    }
+
     @Test func errorNotificationDuringTurnThrowsTurnFailed() async throws {
         let transport = InMemoryTransport()
         let client = try await startedClient(transport)

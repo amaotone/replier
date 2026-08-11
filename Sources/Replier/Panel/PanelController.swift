@@ -8,40 +8,48 @@ final class PanelController {
 
     private var panel: FloatingPanel?
     private let drafter: any ReplyDrafting
-    private let style: StyleProfile
+    private let styleProfileStore: StyleProfileStore
 
-    init(drafter: any ReplyDrafting, style: StyleProfile) {
+    init(drafter: any ReplyDrafting, styleProfileStore: StyleProfileStore) {
         self.drafter = drafter
-        self.style = style
+        self.styleProfileStore = styleProfileStore
     }
 
+    /// Reads the current selection (or falls back to empty context, letting the user
+    /// paste/type into the context editor) and loads the style profile fresh from disk
+    /// so samples added via onboarding/settings take effect without an app restart.
     func show() {
-        guard let selection = SelectionReader.read() else { return }
-
-        let model = PanelModel(
-            contextText: selection.text,
-            sourceApp: selection.sourceApp,
-            drafter: drafter,
-            style: style
-        )
+        let selection = SelectionReader.read()
 
         let panel = panel ?? makePanel()
         self.panel = panel
 
-        let rootView = PanelView(
-            model: model,
-            onConfirm: { [weak self] text in
-                self?.confirm(text: text)
-            },
-            onCancel: { [weak self] in
-                self?.hide()
-            }
-        )
-        panel.contentView = NSHostingView(rootView: rootView)
+        Task { [weak self] in
+            guard let self else { return }
+            let style = (try? await self.styleProfileStore.profile()) ?? StyleProfile()
 
-        position(panel)
-        panel.orderFrontRegardless()
-        panel.makeKey()
+            let model = PanelModel(
+                contextText: selection?.text ?? "",
+                sourceApp: selection?.sourceApp ?? .other,
+                drafter: self.drafter,
+                style: style
+            )
+
+            let rootView = PanelView(
+                model: model,
+                onConfirm: { [weak self] text in
+                    self?.confirm(text: text)
+                },
+                onCancel: { [weak self] in
+                    self?.hide()
+                }
+            )
+            panel.contentView = NSHostingView(rootView: rootView)
+
+            self.position(panel)
+            panel.orderFrontRegardless()
+            panel.makeKey()
+        }
     }
 
     func hide() {

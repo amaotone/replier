@@ -1,9 +1,10 @@
 ---
 id: TASK-9
 title: E2E結線 + オンボーディング
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-11 06:51'
+updated_date: '2026-08-11 07:21'
 labels:
   - ui
 dependencies:
