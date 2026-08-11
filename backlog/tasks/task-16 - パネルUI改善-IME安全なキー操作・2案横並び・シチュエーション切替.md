@@ -1,10 +1,10 @@
 ---
 id: TASK-16
 title: 'パネルUI改善: IME安全なキー操作・2案横並び・シチュエーション切替'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 09:00'
-updated_date: '2026-08-11 09:00'
+updated_date: '2026-08-11 09:11'
 labels:
   - ui
 dependencies: []
@@ -22,8 +22,14 @@ ordinal: 16000
 <!-- AC:BEGIN -->
 - [ ] #1 パネル表示のたびに入力欄にフォーカスがある
 - [ ] #2 IME変換確定のEnterで生成が走らない(onSubmit方式)、変換中の↑↓が奪われない
-- [ ] #3 短め/長めの2案が横並びで全文表示される
-- [ ] #4 auto意図が削除され空Enterは無操作
-- [ ] #5 メール/チャット切替がプロンプトに反映される
-- [ ] #6 トーン/シチュエーション変更では生成が走らない
+- [x] #3 短め/長めの2案が横並びで全文表示される
+- [x] #4 auto意図が削除され空Enterは無操作
+- [x] #5 メール/チャット切替がプロンプトに反映される
+- [x] #6 トーン/シチュエーション変更では生成が走らない
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+AC1(フォーカス)とAC2(IME挙動)はGUIでのみ検証可能なため、ユーザーの実機確認待ち。他4項目はテストで担保(120テスト)
+<!-- SECTION:NOTES:END -->
