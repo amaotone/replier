@@ -79,11 +79,17 @@ xcrun stapler staple "$APP_PATH"
 echo "==> verifying staple"
 xcrun stapler validate "$APP_PATH"
 
-# spctl assessment is advisory here: the notary Accepted status + stapled ticket
-# are the authoritative evidence, and spctl can fail for environmental reasons
-# (e.g. syspolicyd fd exhaustion) unrelated to the app.
-echo "==> spctl assessment (advisory)"
-spctl -a -vv "$APP_PATH" 2>&1 || echo "warning: spctlの評価に失敗(環境要因の可能性)。stapler validateが成功していれば配布可能" >&2
+# syspolicy_check is Apple's current pre-distribution verifier (macOS 14+). It is
+# far more reliable than `spctl -a`, which can fail with "Too many open files"
+# when syspolicyd has exhausted its descriptors — an environment fault unrelated
+# to the app.
+echo "==> pre-distribution check"
+if command -v syspolicy_check >/dev/null 2>&1; then
+  syspolicy_check distribution "$APP_PATH"
+else
+  spctl -a -vv "$APP_PATH" 2>&1 ||
+    echo "warning: spctlの評価に失敗(環境要因の可能性)。stapler validateが成功していれば配布可能" >&2
+fi
 
 echo "==> regenerating DMG"
 # Launching the app writes Contents/com.apple.provenance into the bundle, which
@@ -118,6 +124,9 @@ if ! xcrun stapler validate "$MOUNT_POINT/Replier.app" >/dev/null 2>&1; then
   exit 1
 fi
 codesign --verify --deep --strict "$MOUNT_POINT/Replier.app"
+if command -v syspolicy_check >/dev/null 2>&1; then
+  syspolicy_check distribution "$MOUNT_POINT/Replier.app"
+fi
 hdiutil detach "$MOUNT_POINT" >/dev/null
 rmdir "$MOUNT_POINT" 2>/dev/null || true
 echo "DMG内のアプリ: 署名・stapleともに検証OK"
