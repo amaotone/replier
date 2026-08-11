@@ -1,7 +1,7 @@
 # easy-replier 設計ドキュメント
 
 メール・Slackの返信をAIで素早く下書きするMacアプリ。
-ユーザーが既に契約しているChatGPT Plus / Claude Proのサブスクリプションをそのまま利用するため、追加コストゼロで使える。
+ユーザーが既に契約しているChatGPTのサブスクリプションをそのまま利用するため、追加コストゼロで使える(MVPはOpenAI固定、Claude対応はP2以降)。
 
 - 参考サービス: henji.ai(受信メッセージへのAI返信作成SaaS)
 - 差別化: **完全ローカル・サーバーレス・追加課金なし**
@@ -24,13 +24,14 @@ easy-replierは構造でこれを解決する:
 
 ### 「無料で使える構造」の核
 
-アプリ自身はLLMのAPIキーもサーバーも持たない。ユーザーのMacにインストール済みの **認証済みエージェントCLI** をサブプロセスとして起動する:
+アプリ自身はLLMのAPIキーもサーバーも持たない。MVPはOpenAIに固定し、**`codex app-server`**(CodexのCLI・IDE拡張・デスクトップアプリ・Web版すべてを駆動する公式のJSON-RPC 2.0プロセス)を子プロセスとして常駐させる:
 
-- ChatGPT契約者 → **Codex CLI**(`codex exec`、ChatGPTアカウントでログイン済み)
-- Claude契約者 → **Claude Code CLI**(`claude -p`、Pro/Maxでログイン済み)
-- どちらもない → BYO APIキー / Ollama(ローカルLLM)フォールバック
+- ChatGPT契約者 → app-serverの `chatgpt` 認証モード。ログイン(`~/.codex`)はCodexアプリ/CLI/IDE拡張と共有されるため、Codexユーザーは**ゼロコンフィグ**
+- サブスクなし・学習ゼロをデフォルトで求める人 → 同じapp-serverの `apikey` 認証モード(API経由はデフォルトで学習利用なし)
+- オフライン志向 → Ollama(ローカルLLM)フォールバック
+- Claude対応はP2以降(Claude Code CLI / Agent SDKで同型の構造が可能)
 
-アプリは認証情報に一切触れない。推論コストはユーザーの既存サブスクに含まれるため、開発者側の限界費用はゼロ。これが無料配布を持続可能にする。
+アプリは認証情報に一切触れない(app-serverが `~/.codex` の認証を自分で参照する)。推論コストはユーザーの既存サブスクに含まれるため、開発者側の限界費用はゼロ。これが無料配布を持続可能にする。
 
 ---
 
@@ -39,9 +40,10 @@ easy-replierは構造でこれを解決する:
 | ID | 判断 | 理由 / トレードオフ |
 |---|---|---|
 | D1 | サーバーレス・ローカル完結 | 無料配布の持続可能性とプライバシー訴求。チーム機能等は作りにくいが個人向けMVPでは不要 |
-| D2 | LLMアクセスはローカルCLI経由 | 追加費用ゼロ。規約・仕様変更リスクがあるためアダプタ層で疎結合にし、APIキー/Ollamaフォールバックを常備 |
+| D2 | LLMアクセスは `codex app-server` 常駐プロセス経由 | サードパーティ統合が公式に想定された文書化済みプロトコル。`chatgpt`/`apikey` 両認証モードを単一統合面で扱え、常駐のためコールドスタートなし。仕様変更はアダプタ層で吸収し、Ollamaフォールバックを常備 |
 | D3 | MVPは「選択テキスト」ベース | Gmail/Slack APIのOAuth連携なしで全アプリに対応できる。スレッド全体の文脈はユーザーの選択範囲に依存するが、P3で直接連携を追加 |
 | D4 | ネイティブSwift実装 | Accessibility API・CGEvent・グローバルホットキー・低メモリ常駐が必須要件のため。Electron/Tauriは不採用 |
+| D5 | MVPはOpenAI固定 | 統合面を1本に絞り実装・検証コストを最小化。Claude等のマルチプロバイダ対応はアダプタ層の追加実装としてP2以降 |
 
 ---
 
@@ -85,16 +87,17 @@ easy-replierは構造でこれを解決する:
 
 - 選択テキストが取得できない場合はクリップボード(直前の⌘C)にフォールバック
 - 前面アプリを自動判定し、Slackならカジュアル・メールなら丁寧、のアプリ別デフォルトトーンを適用
-- 生成は1リクエストで3案(コールドスタート1回で済ませ、レイテンシとサブスク消費を抑える)
+- 生成は1リクエストで3案(サブスク消費を抑える。app-server常駐によりプロセス起動の待ちはない)
 
 ### 4.2 オンボーディング
 
 1. **アクセシビリティ権限** の許可(選択テキスト取得・ペーストに必要)
-2. **バックエンド検出**: `claude` / `codex` の存在とログイン状態を自動チェック
-   - 見つかった → そのまま利用開始(ゼロコンフィグ)
-   - 未インストール → インストールガイド表示(`npm i -g @openai/codex` 等)。ログインはユーザー自身がターミナルで実行(アプリは認証に関与しない)
-   - どちらも使わない → APIキー入力 or Ollama設定
-3. **文体セットアップ**(スキップ可): 過去の自分の返信を3〜5個貼り付け → 文体プロファイル初期化
+2. **バックエンド検出**: `~/.codex` のログイン状態を自動チェック(認証はCodexアプリ/CLI/IDE拡張と共有される)
+   - Codexアプリ or CLIでログイン済み → そのまま利用開始(ゼロコンフィグ)
+   - 未インストール → `brew install codex` のコピペ1行ガイド。ログインはユーザー自身がCodexアプリ/ターミナルで実行(easy-replierは認証に関与しない)
+   - サブスクを使わない → APIキー入力(app-serverの `apikey` モード) or Ollama設定
+3. **データ設定の確認**(個人プラン利用時): 学習オプトアウト2箇所(ChatGPTのData ControlsとCodex側設定)の手順を提示し、確認チェックを求める(§6参照)
+4. **文体セットアップ**(スキップ可): 過去の自分の返信を3〜5個貼り付け → 文体プロファイル初期化
 
 ### 4.3 文体学習ループ
 
@@ -106,7 +109,7 @@ easy-replierは構造でこれを解決する:
 | フェーズ | 内容 |
 |---|---|
 | P1 (MVP) | 選択テキスト → 3案生成 → ペースト。手動文体サンプルのみ |
-| P2 | 編集diffからの自動文体学習、アプリ別プロファイル、多言語(英語返信) |
+| P2 | 編集diffからの自動文体学習、アプリ別プロファイル、多言語(英語返信)、Claudeバックエンド追加(マルチプロバイダ化) |
 | P3 | 直接連携: Gmail APIで下書き作成、Slack APIでスレッド取得&投稿(ローカルloopback OAuth、サーバーレス維持)。受信箱ビュー(henji.ai的体験) |
 
 ---
@@ -117,14 +120,14 @@ easy-replierは構造でこれを解決する:
 
 ```
   [ユーザー] ──操作──▶ [easy-replier (Mac app)]
-                          │ 読取/ペースト            │ サブプロセス起動
+                          │ 読取/ペースト            │ 子プロセスとして常駐起動
                           ▼                        ▼
-              [ホストアプリ群]              [エージェントCLI群]
-              Slack / Mail.app /           Claude Code CLI / Codex CLI
-              ブラウザ(Gmail)               (ユーザーのサブスクで認証済み)
+              [ホストアプリ群]              [codex app-server]
+              Slack / Mail.app /           (JSON-RPC 2.0。~/.codex の
+              ブラウザ(Gmail)               サブスク認証を共有)
                                                  │ HTTPS
                                                  ▼
-                                    [Anthropic / OpenAI クラウド]
+                                        [OpenAI クラウド]
 ```
 
 ### 5.2 C4 Level 2: Container図
@@ -148,23 +151,24 @@ easy-replierは構造でこれを解決する:
 │  │       │               3案生成の指示、ストリーミング配信                       │  │
 │  │       ▼                                                                │  │
 │  │  [Provider Adapter]   共通protocol ReplyBackend                         │  │
-│  │       │               ├ ClaudeCodeBackend / CodexBackend(CLI起動)      │  │
-│  │       │               ├ APIBackend(BYOキー直叩き)                        │  │
-│  │       │               └ OllamaBackend(ローカルLLM)                      │  │
+│  │       │               ├ CodexAppServerClient(JSON-RPC over stdio、     │  │
+│  │       │               │   上流認証: chatgpt / apikey の両モード)          │  │
+│  │       │               ├ OllamaBackend(ローカルLLM)                      │  │
+│  │       │               └ (P2) ClaudeBackend                             │  │
 │  │  [Output Injector]    ペースト実行、クリップボード退避・復元                   │  │
 │  │  [Style Profile Store]─────────┐                                        │  │
 │  └───────│───────────────────────│────────────────────────────────────────┘  │
-│          │ spawn + stdin/stdout   │ read/write                               │
-│          ▼ (stream-json)          ▼                                          │
-│  ┌─ エージェントCLI ─────────┐   ┌─ ローカルストア ──────────────┐               │
-│  │ claude -p / codex exec  │   │ SQLite (App Support配下)     │               │
-│  │ ※ユーザー自身が認証済み。   │   │ 文体サンプル・編集diff・設定    │               │
-│  │  アプリは認証情報に不関与   │   │ ※全データ、ローカルのみ         │               │
+│          │ spawn + JSON-RPC 2.0   │ read/write                               │
+│          ▼ (stdio、常駐)           ▼                                          │
+│  ┌─ codex app-server ──────┐   ┌─ ローカルストア ──────────────┐               │
+│  │ 常駐エージェントプロセス     │   │ SQLite (App Support配下)     │               │
+│  │ ※~/.codex の認証を自分で  │   │ 文体サンプル・編集diff・設定    │               │
+│  │  参照。アプリは不関与       │   │ ※全データ、ローカルのみ         │               │
 │  └───────────│─────────────┘   └─────────────────────────────┘               │
 └──────────────│───────────────────────────────────────────────────────────────┘
-               │ HTTPS(ユーザーのサブスク認証)
+               │ HTTPS(サブスク認証 or APIキー)
                ▼
-      [Anthropic / OpenAI クラウド](外部システム)
+           [OpenAI クラウド](外部システム)
 ```
 
 ### 5.3 コンテナ責務一覧
@@ -174,23 +178,25 @@ easy-replierは構造でこれを解決する:
 | UI Shell | SwiftUI (NSStatusItem + NSPanel) | グローバルホットキー、フローティングパネル、設定画面、オンボーディング |
 | Context Capture | Swift + Accessibility API | 前面アプリ判定、選択テキスト取得、クリップボードフォールバック、アプリ種別分類 |
 | Draft Orchestrator | Swift(コアロジック) | プロンプト組立(文脈+意図+文体)、バックエンド選択、ストリーミング処理、リトライ |
-| Provider Adapter | Swift protocol + 実装群 | LLMバックエンドの抽象化。CLI spawn(`Process` + stream-json)、API直叩き、Ollama |
+| Provider Adapter | Swift protocol + 実装群 | LLMバックエンドの抽象化。app-serverのspawn・死活監視・JSON-RPCクライアント、Ollama、(P2)Claude |
 | Output Injector | Swift + CGEvent | 元アプリへのペースト、クリップボードの退避・復元 |
 | Style Profile Store | SQLite (GRDB) | 文体サンプル、下書き/最終版diff、アプリ別トーン設定。すべてローカル |
-| エージェントCLI | Claude Code / Codex(外部・ユーザー管理) | サブスク認証済みのLLM推論実行。アプリからはサブプロセス |
+| codex app-server | Codex付属(外部・OpenAI管理) | LLM推論の実行。全Codexサーフェス共通の公式JSON-RPC 2.0サービス。`~/.codex` の認証を自分で参照 |
 
 ### 5.4 主要シーケンス(返信生成)
 
 ```
-UI Shell          Capture        Orchestrator     Adapter          CLI/API
+(アプリ起動時: Adapter が codex app-server を spawn し常駐させておく)
+
+UI Shell          Capture        Orchestrator     Adapter        app-server
    │ ⌥⌘R            │                │               │                │
    ├───────────────▶│ AXで選択取得     │               │                │
    │◀──文脈表示──────┤                │               │                │
    │ 意図タップ        │                │               │                │
    ├────────────────────────────────▶│ プロンプト組立   │                │
-   │                 │                ├──────────────▶│ spawn claude -p │
-   │                 │                │               ├───────────────▶│
-   │◀────────3案ストリーミング──────────┤◀──stream-json──┤◀───────────────┤
+   │                 │                ├──────────────▶│ thread作成+送信  │
+   │                 │                │               ├──JSON-RPC─────▶│
+   │◀────────3案ストリーミング──────────┤◀──イベント通知──┤◀───────────────┤
    │ Enter(案②選択)  │                │               │                │
    ├─▶ Injector: クリップボード退避 → ペースト → 復元      │                │
    │ (任意)学習ボタン → Style Store に (下書き, 最終版) を保存             │
@@ -198,24 +204,57 @@ UI Shell          Capture        Orchestrator     Adapter          CLI/API
 
 ---
 
-## 6. リスクと緩和策
+## 6. データガバナンス(学習利用の担保)
 
-| ID | リスク | 緩和策 |
+「メッセージ内容が自分のコントロール下にあること」を製品要件とする(US-3)。
+
+### データの流れと保存場所
+
+| データ | 置き場所 | 備考 |
 |---|---|---|
-| R1 | **規約リスク**: Anthropic/OpenAIがサブスク認証CLIのサードパーティ利用の扱いを変更する可能性 | アプリは認証情報に触れず「ユーザー自身のCLIを起動する」構造に限定。Provider Adapter層で疎結合にし、APIキー/Ollamaへ即座に切替可能。配布時に規約状況を明記 |
-| R2 | CLIコールドスタートのレイテンシ(2〜5秒) | 3案を1リクエストにまとめる、セッション常駐(`--resume` / Agent SDK streaming)、ホットキー押下時点でプリウォーム |
-| R3 | Slack(Electron)のAXツリーから選択テキストが取れないケース | クリップボードフォールバックを一級市民として設計(⌘C→⌥⌘Rの導線をオンボーディングで教育) |
-| R4 | CLI未インストールユーザーの離脱 | オンボーディングで自動検出+コピペ1行のインストールガイド。APIキー経路も用意 |
-| R5 | 生成品質が文体に合わずそのまま送れない | 文体プロファイル(手動→自動学習)を初期から設計に組み込む。US-2が本質価値のため最優先で磨く |
+| 文体プロファイル・編集diff・設定 | ローカルSQLiteのみ | 開発者サーバーは存在しない。クラウド同期もしない |
+| 返信生成の文脈・下書き | メモリ上 → OpenAIへ直接送信 | easy-replier側には永続化しない(ユーザーが学習サンプルとして明示保存した場合を除く) |
+| 認証情報 | `~/.codex`(OpenAI管理) | アプリは読まない。app-serverが自分で参照 |
+
+### OpenAI側での学習利用
+
+「学習に使われない」は担保できるが、**デフォルトでOFFかどうかはプランに依存する**:
+
+| 経路 | 学習利用 | 担保の方法 |
+|---|---|---|
+| ChatGPT Plus/Pro(個人プラン) | **デフォルトON** | 2箇所のオプトアウトが必要: ①ChatGPT設定 → Data Controls → 「Improve the model for everyone」をOFF(Codex経由で処理されたコンテンツにも適用される) ②Codex側設定の学習許可(full environment)もOFF(①では変わらない独立設定) |
+| ChatGPT Business/Enterprise | デフォルトOFF | 設定不要 |
+| APIキー(app-server `apikey` モード) | デフォルトOFF | 学習ゼロをデフォルトで求めるユーザーへの推奨経路 |
+
+注: 学習利用とは別に、OpenAIサーバー上でのデータ保持(リテンション)は個人プランではゼロにできない(ZDRは契約ベースのAPI限定)。「ローカル完結」が指すのはeasy-replier自身がデータを外部保存しないことであり、LLM送信分はOpenAIのプライバシーポリシーに従う——これはChatGPTを直接使う場合と同等。
+
+### アプリ側の設計対応
+
+- オンボーディングに「データ設定の確認」ステップを組み込む(個人プラン利用時)。2箇所のOFF項目のチェックリストと設定画面への導線を提示
+- オプトアウト状態をアプリから機械的に検証する手段はないため、UI上で明示的な確認チェックを求め、手順はヘルプから常時参照可能にする
+- 学習ゼロをデフォルトで保証したいユーザーには `apikey` モードを第一に案内する
 
 ---
 
-## 7. 技術スタック(想定)
+## 7. リスクと緩和策
+
+| ID | リスク | 緩和策 |
+|---|---|---|
+| R1 | **プロトコル変更リスク**: app-serverの仕様進化への追従が必要 | サードパーティ統合が公式に想定・文書化されたプロトコルであり、規約面のリスクは低い。Provider Adapter層で疎結合にし、`apikey` モード/Ollamaへ即座に切替可能 |
+| R2 | 生成レイテンシ | app-server常駐でプロセス起動コストは解消済み。残るモデル推論時間は3案1リクエスト+ストリーミング表示で体感を短縮 |
+| R3 | Slack(Electron)のAXツリーから選択テキストが取れないケース | クリップボードフォールバックを一級市民として設計(⌘C→⌥⌘Rの導線をオンボーディングで教育) |
+| R4 | Codex未導入ユーザーの離脱 | Codexアプリ/CLI/IDE拡張いずれかのログインを自動検出(認証共有)し、大半をゼロコンフィグに。未導入でも `brew install codex` 1行+APIキー経路 |
+| R5 | 生成品質が文体に合わずそのまま送れない | 文体プロファイル(手動→自動学習)を初期から設計に組み込む。US-2が本質価値のため最優先で磨く |
+| R6 | **学習オプトアウトがユーザー設定依存**(Plus/Pro)で、アプリから機械検証できない | オンボーディングの必須確認ステップ+ヘルプからの常時導線(§6)。学習ゼロをデフォルトで求めるユーザーには `apikey` モードを案内 |
+
+---
+
+## 8. 技術スタック(想定)
 
 - 言語/UI: Swift 6 / SwiftUI(メニューバー常駐、NSPanelフローティング)
 - ホットキー: Carbon `RegisterEventHotKey` or KeyboardShortcuts(ライブラリ)
 - テキスト取得: `AXUIElement`(kAXSelectedTextAttribute)+ NSPasteboardフォールバック
 - ペースト: CGEvent(⌘V合成)+ クリップボード退避復元
-- CLI連携: Foundation `Process` + `--output-format stream-json`
+- LLM連携: Foundation `Process` で `codex app-server --listen stdio://` を常駐spawn + JSON-RPC 2.0クライアント(Swift自前実装。TypeScript/Python SDKは不要)
 - ストア: SQLite(GRDB)
 - 配布: notarized DMG / Homebrew Cask(無料・OSS想定)
