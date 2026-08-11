@@ -1,4 +1,4 @@
-# easy-replier 設計ドキュメント
+# repp 設計ドキュメント
 
 メール・Slackの返信をAIで素早く下書きするMacアプリ。
 ユーザーが既に契約しているChatGPTのサブスクリプションをそのまま利用するため、追加コストゼロで使える(MVPはOpenAI固定、Claude対応はP2以降)。
@@ -13,9 +13,9 @@
 > 「返信の文面を考える時間」をゼロにする。判断だけ人間がやる。
 
 henji.aiのようなSaaS型は、①新たなサブスク費用がかかる、②メッセージ内容が事業者のサーバーを経由する、という2つの心理的障壁がある。
-easy-replierは構造でこれを解決する:
+reppは構造でこれを解決する:
 
-| | henji.ai型 SaaS | easy-replier |
+| | henji.ai型 SaaS | repp |
 |---|---|---|
 | 料金 | 月額課金 | 無料(既存のChatGPT/Claude契約を利用) |
 | データ経路 | 事業者サーバー経由 | ローカル完結(LLM事業者へ直接) |
@@ -94,7 +94,7 @@ easy-replierは構造でこれを解決する:
 1. **アクセシビリティ権限** の許可(選択テキスト取得・ペーストに必要)
 2. **バックエンド検出**: `~/.codex` のログイン状態を自動チェック(認証はCodexアプリ/CLI/IDE拡張と共有される)
    - Codexアプリ or CLIでログイン済み → そのまま利用開始(ゼロコンフィグ)
-   - 未インストール → `brew install codex` のコピペ1行ガイド。ログインはユーザー自身がCodexアプリ/ターミナルで実行(easy-replierは認証に関与しない)
+   - 未インストール → `brew install codex` のコピペ1行ガイド。ログインはユーザー自身がCodexアプリ/ターミナルで実行(reppは認証に関与しない)
    - サブスクを使わない → APIキー入力(app-serverの `apikey` モード) or Ollama設定
 3. **データ設定の確認**(個人プラン利用時): 学習オプトアウト2箇所(ChatGPTのData ControlsとCodex側設定)の手順を提示し、確認チェックを求める(§6参照)
 4. **文体セットアップ**(スキップ可): 過去の自分の返信を3〜5個貼り付け → 文体プロファイル初期化
@@ -119,7 +119,7 @@ easy-replierは構造でこれを解決する:
 ### 5.1 C4 Level 1: System Context
 
 ```
-  [ユーザー] ──操作──▶ [easy-replier (Mac app)]
+  [ユーザー] ──操作──▶ [repp (Mac app)]
                           │ 読取/ペースト            │ 子プロセスとして常駐起動
                           ▼                        ▼
               [ホストアプリ群]              [codex app-server]
@@ -140,7 +140,7 @@ easy-replierは構造でこれを解決する:
 │  └────────────△───────────────┘                │                             │
 │               │ AX API / クリップボード           │ CGEventペースト               │
 │               │                                │                             │
-│  ┌─ easy-replier.app(Swift / SwiftUI, メニューバー常駐)──────────────────────┐  │
+│  ┌─ repp.app(Swift / SwiftUI, メニューバー常駐)──────────────────────┐  │
 │  │                                                                        │  │
 │  │  [UI Shell]           ホットキー・フローティングパネル・設定・オンボーディング     │  │
 │  │       │                                                                │  │
@@ -213,7 +213,7 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | データ | 置き場所 | 備考 |
 |---|---|---|
 | 文体プロファイル・編集diff・設定 | ローカルSQLiteのみ | 開発者サーバーは存在しない。クラウド同期もしない |
-| 返信生成の文脈・下書き | メモリ上 → OpenAIへ直接送信 | easy-replier側には永続化しない(ユーザーが学習サンプルとして明示保存した場合を除く) |
+| 返信生成の文脈・下書き | メモリ上 → OpenAIへ直接送信 | repp側には永続化しない(ユーザーが学習サンプルとして明示保存した場合を除く) |
 | 認証情報 | `~/.codex`(OpenAI管理) | アプリは読まない。app-serverが自分で参照 |
 
 ### OpenAI側での学習利用
@@ -226,7 +226,7 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | ChatGPT Business/Enterprise | デフォルトOFF | 設定不要 |
 | APIキー(app-server `apikey` モード) | デフォルトOFF | 学習ゼロをデフォルトで求めるユーザーへの推奨経路 |
 
-注: 学習利用とは別に、OpenAIサーバー上でのデータ保持(リテンション)は個人プランではゼロにできない(ZDRは契約ベースのAPI限定)。「ローカル完結」が指すのはeasy-replier自身がデータを外部保存しないことであり、LLM送信分はOpenAIのプライバシーポリシーに従う——これはChatGPTを直接使う場合と同等。
+注: 学習利用とは別に、OpenAIサーバー上でのデータ保持(リテンション)は個人プランではゼロにできない(ZDRは契約ベースのAPI限定)。「ローカル完結」が指すのはrepp自身がデータを外部保存しないことであり、LLM送信分はOpenAIのプライバシーポリシーに従う——これはChatGPTを直接使う場合と同等。
 
 ### アプリ側の設計対応
 
@@ -265,6 +265,6 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | テキスト取得/ペースト | `AXUIElement` / `CGEvent` の自前薄ラッパー | 各数十行で済み、依存を増やす価値がない |
 | LLM連携 | `codex app-server --listen stdio://` を常駐spawn + 自前JSON-RPC 2.0クライアント | Swiftからは自前実装が最短(公式SDKはTS/Pythonのみ)。イベントは `AsyncStream` でUIへ |
 | 永続化 | UserDefaults(設定)+ JSONファイル(文体サンプル) | MVPのデータ量では最速・最容易。編集diff蓄積が増えるP2でGRDB(SQLite)へ移行 |
-| プロジェクト構成 | `EasyReplierCore` SPMパッケージ(プロンプト組立・JSON-RPC・バックエンド抽象)+ 薄いアプリターゲット | コアをUI非依存にしてTDD可能に。ビルドも高速 |
+| プロジェクト構成 | `ReppCore` SPMパッケージ(プロンプト組立・JSON-RPC・バックエンド抽象)+ 薄いアプリターゲット | コアをUI非依存にしてTDD可能に。ビルドも高速 |
 | テスト | Swift Testing(`@Test`) | 標準・高速。Coreパッケージを単体テスト、AppKit外殻は薄く保ち手動確認 |
 | 配布 | Developer ID署名 + notarization、DMG、Homebrew Cask | 無料配布。自動更新は必要になったらSparkle(P2) |
