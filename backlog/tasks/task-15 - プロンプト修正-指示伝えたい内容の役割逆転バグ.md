@@ -1,10 +1,10 @@
 ---
 id: TASK-15
 title: 'プロンプト修正: 指示(伝えたい内容)の役割逆転バグ'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 08:48'
-updated_date: '2026-08-11 08:48'
+updated_date: '2026-08-11 08:55'
 labels:
   - core
 dependencies: []
@@ -20,7 +20,13 @@ ordinal: 15000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 失敗例(長文への「もっと簡潔に話してよ」)で謝罪ではなく相手への要望文が生成される(実機検証)
-- [ ] #2 役割定義とone-shot例の存在がプロンプトテストで担保される
-- [ ] #3 既存テスト全パス
+- [x] #1 失敗例(長文への「もっと簡潔に話してよ」)で謝罪ではなく相手への要望文が生成される(実機検証)
+- [x] #2 役割定義とone-shot例の存在がプロンプトテストで担保される
+- [x] #3 既存テスト全パス
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+役割定義+one-shot対比例+見出し構造化で修正。実機の失敗シナリオでユーザーが改善を確認済み(2026-08-11)。112テスト
+<!-- SECTION:NOTES:END -->
