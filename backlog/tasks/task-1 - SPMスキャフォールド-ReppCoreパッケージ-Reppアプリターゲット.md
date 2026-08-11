@@ -1,9 +1,10 @@
 ---
 id: TASK-1
 title: 'SPMスキャフォールド: ReppCoreパッケージ + Reppアプリターゲット'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-11 06:50'
+updated_date: '2026-08-11 06:52'
 labels:
   - core
 dependencies: []
