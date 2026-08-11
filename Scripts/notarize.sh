@@ -29,11 +29,23 @@ if ! echo "$SIGN_INFO" | grep -q "Authority=Developer ID Application"; then
   exit 1
 fi
 
-if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
-  echo "error: notarytoolのキーチェーンプロファイル '$NOTARY_PROFILE' が見つかりません。以下のコマンドで作成してください:" >&2
+# The profile lives in a data-protection keychain that `security` can't reliably
+# probe, so we verify via `notarytool history` — a network call that can flap.
+# Retry a few times so a transient hiccup doesn't masquerade as a missing profile;
+# the authoritative check is the `submit` step, which fails clearly on bad creds.
+PROFILE_OK=0
+for _ in 1 2 3; do
+  if xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+    PROFILE_OK=1
+    break
+  fi
+  sleep 3
+done
+if [ "$PROFILE_OK" -eq 0 ]; then
+  echo "warning: notarytoolプロファイル '$NOTARY_PROFILE' の事前確認に失敗しました(ネットワークの一時障害か、未作成)。" >&2
+  echo "  未作成の場合は次で作成してください:" >&2
   echo "  xcrun notarytool store-credentials $NOTARY_PROFILE --apple-id <Apple IDのメールアドレス> --team-id $TEAM_ID --password <Appサインイン用Appleパスワード>" >&2
-  echo "  (App用Appleパスワードは https://account.apple.com/account/manage で発行)" >&2
-  exit 1
+  echo "  作成済みならこのまま続行します(submit時に認証されます)。" >&2
 fi
 
 cleanup() {
@@ -74,6 +86,15 @@ echo "==> spctl assessment (advisory)"
 spctl -a -vv "$APP_PATH" 2>&1 || echo "warning: spctlの評価に失敗(環境要因の可能性)。stapler validateが成功していれば配布可能" >&2
 
 echo "==> regenerating DMG"
+# Launching the app writes Contents/com.apple.provenance into the bundle, which
+# changes its hash and silently invalidates the stapled ticket. Ship that and
+# Gatekeeper calls the download "damaged", so refuse to package it.
+if [ -e "$APP_PATH/Contents/com.apple.provenance" ]; then
+  echo "error: $APP_PATH に com.apple.provenance があります(公証後にアプリを起動した形跡)。" >&2
+  echo "  stapleチケットが無効になっているため、再ビルドからやり直してください:" >&2
+  echo "  REPLIER_SIGN_IDENTITY='Developer ID Application' Scripts/build-app.sh && Scripts/notarize.sh" >&2
+  exit 1
+fi
 Scripts/make-dmg.sh
 
 # A staple ticket is looked up by the target's own hash, so the DMG must be
@@ -84,6 +105,22 @@ xcrun notarytool submit "$DMG_PATH" --keychain-profile "$NOTARY_PROFILE" --wait
 echo "==> stapling ticket to DMG"
 xcrun stapler staple "$DMG_PATH"
 xcrun stapler validate "$DMG_PATH"
+
+# Final gate: what users actually double-click is the app *inside* the DMG, so
+# validate that copy rather than trusting the staging one.
+echo "==> verifying the app inside the DMG"
+MOUNT_POINT="$(mktemp -d)"
+hdiutil attach "$DMG_PATH" -nobrowse -readonly -mountpoint "$MOUNT_POINT" >/dev/null
+if ! xcrun stapler validate "$MOUNT_POINT/Replier.app" >/dev/null 2>&1; then
+  hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true
+  rmdir "$MOUNT_POINT" 2>/dev/null || true
+  echo "error: DMG内のReplier.appにstapleチケットがありません。配布してはいけません。" >&2
+  exit 1
+fi
+codesign --verify --deep --strict "$MOUNT_POINT/Replier.app"
+hdiutil detach "$MOUNT_POINT" >/dev/null
+rmdir "$MOUNT_POINT" 2>/dev/null || true
+echo "DMG内のアプリ: 署名・stapleともに検証OK"
 
 echo "==> done"
 echo "Notarized app: $ROOT_DIR/$APP_PATH"
