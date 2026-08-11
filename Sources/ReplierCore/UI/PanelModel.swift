@@ -4,17 +4,19 @@ import Observation
 @Observable
 public final class PanelModel {
     public enum Phase: Equatable {
-        case choosing
+        case composing
         case generating
         case ready
         case failed(String)
     }
 
-    public private(set) var phase: Phase = .choosing
+    public private(set) var phase: Phase = .composing
     public var contextText: String
     public let sourceApp: SourceApp
     public var tone: Tone
-    public var customInstruction: String = ""
+    /// The 返信欄 text: the user's one-line gist/instruction for the reply. Bound
+    /// directly by `PanelView`'s instruction field and read by `submitInstruction()`.
+    public var instruction: String = ""
     public private(set) var partials: [PartialCandidate] = []
     public private(set) var selectedIndex: Int = 0
     public private(set) var lastIntent: ReplyIntent = .auto
@@ -61,6 +63,14 @@ public final class PanelModel {
         choose(intent: lastIntent)
     }
 
+    /// Submits the current `instruction` text: non-empty text becomes a `.custom`
+    /// intent, empty text falls back to `.auto`. Safe to call again while generating
+    /// or ready — `choose(intent:)` cancels the in-flight generation and restarts.
+    public func submitInstruction() {
+        let trimmed = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        choose(intent: trimmed.isEmpty ? .auto : .custom(trimmed))
+    }
+
     private func isStale(_ generation: Int) -> Bool {
         generation != currentGeneration || Task.isCancelled
     }
@@ -92,9 +102,9 @@ public final class PanelModel {
         }
     }
 
-    public func resetToChoosing() {
+    public func resetToComposing() {
         generationTask?.cancel()
-        phase = .choosing
+        phase = .composing
         partials = []
         selectedIndex = 0
     }

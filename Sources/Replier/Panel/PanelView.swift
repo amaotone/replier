@@ -6,12 +6,20 @@ struct PanelView: View {
     let onConfirm: (String) -> Void
     let onCancel: () -> Void
 
-    @FocusState private var isFocused: Bool
-    @State private var customInstructionDraft: String = ""
+    /// Two focus targets: the instruction field (where typing happens) and the panel
+    /// itself (which backs candidate ↑↓ navigation). See `instructionField`'s and the
+    /// root view's `onKeyPress` handlers below for the full Enter/arrow-key scheme.
+    private enum FocusTarget: Hashable {
+        case instruction
+        case panel
+    }
+
+    @FocusState private var focusedTarget: FocusTarget?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             contextPreview
+            instructionField
             intentRow
             tonePicker
             Divider()
@@ -27,8 +35,8 @@ struct PanelView: View {
                 .stroke(Color.primary.opacity(0.1), lineWidth: 1)
         )
         .focusable()
-        .focused($isFocused)
-        .onAppear { isFocused = true }
+        .focused($focusedTarget, equals: .panel)
+        .onAppear { focusedTarget = .instruction }
         .onKeyPress(.upArrow) {
             model.moveSelection(-1)
             return .handled
@@ -37,15 +45,60 @@ struct PanelView: View {
             model.moveSelection(1)
             return .handled
         }
-        .onKeyPress(.return) {
-            guard let text = model.confirmSelection() else { return .ignored }
-            onConfirm(text)
-            return .handled
+        .onKeyPress(.return, phases: .down) { press in
+            if press.modifiers.contains(.command) {
+                return attemptConfirm() ? .handled : .ignored
+            }
+            if model.phase == .composing {
+                model.submitInstruction()
+                return .handled
+            }
+            return attemptConfirm() ? .handled : .ignored
         }
         .onKeyPress(.escape) {
             onCancel()
             return .handled
         }
+    }
+
+    /// Enter submits the instruction (composing or otherwise, since the field is
+    /// focused). ⌘Enter is the always-available confirm fast path. ↑↓ move candidate
+    /// selection and hand focus to the panel, so a second ↑↓ (or a plain Enter) then
+    /// acts on the candidate list per the root view's handlers above.
+    private var instructionField: some View {
+        TextField("返信の要旨を一言(空のままEnterでおまかせ)", text: $model.instruction)
+            .textFieldStyle(.roundedBorder)
+            .focused($focusedTarget, equals: .instruction)
+            .onKeyPress(.upArrow) {
+                guard !model.partials.isEmpty else { return .ignored }
+                model.moveSelection(-1)
+                focusedTarget = .panel
+                return .handled
+            }
+            .onKeyPress(.downArrow) {
+                guard !model.partials.isEmpty else { return .ignored }
+                model.moveSelection(1)
+                focusedTarget = .panel
+                return .handled
+            }
+            .onKeyPress(.return, phases: .down) { press in
+                if press.modifiers.contains(.command) {
+                    return attemptConfirm() ? .handled : .ignored
+                }
+                model.submitInstruction()
+                return .handled
+            }
+            .onKeyPress(.escape) {
+                onCancel()
+                return .handled
+            }
+    }
+
+    @discardableResult
+    private func attemptConfirm() -> Bool {
+        guard let text = model.confirmSelection() else { return false }
+        onConfirm(text)
+        return true
     }
 
     private var contextPreview: some View {
@@ -70,9 +123,6 @@ struct PanelView: View {
             intentButton("お断り", intent: .decline)
             intentButton("質問", intent: .question)
             intentButton("後で連絡", intent: .followUp)
-            TextField("自由指示…", text: $customInstructionDraft)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit(submitCustomInstruction)
         }
     }
 
@@ -81,12 +131,6 @@ struct PanelView: View {
             model.choose(intent: intent)
         }
         .buttonStyle(.bordered)
-    }
-
-    private func submitCustomInstruction() {
-        let instruction = customInstructionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !instruction.isEmpty else { return }
-        model.choose(intent: .custom(instruction))
     }
 
     private var tonePicker: some View {
@@ -103,9 +147,9 @@ struct PanelView: View {
     @ViewBuilder
     private var contentArea: some View {
         switch model.phase {
-        case .choosing:
+        case .composing:
             centered {
-                Text("まもなく返信案を生成します…")
+                Text("返信の要旨を入力してEnter、または上のボタンから作成してください")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -182,9 +226,7 @@ struct PanelView: View {
         .onTapGesture(count: 2) {
             guard candidate.isComplete else { return }
             model.moveSelection(index - model.selectedIndex)
-            if let text = model.confirmSelection() {
-                onConfirm(text)
-            }
+            attemptConfirm()
         }
         .onTapGesture(count: 1) {
             model.moveSelection(index - model.selectedIndex)

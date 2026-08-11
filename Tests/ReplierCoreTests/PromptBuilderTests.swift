@@ -102,8 +102,8 @@ import Testing
         #expect(prompt.user.contains("後で改めて連絡する旨の返信"))
     }
 
-    @Test func userPromptReflectsCustomIntentVerbatim() {
+    @Test func userPromptFramesCustomIntentAsGistInstruction() {
         let prompt = builder.build(request(intent: .custom("英語で、少しユーモアを交えて返信してください")))
-        #expect(prompt.user.contains("英語で、少しユーモアを交えて返信してください"))
+        #expect(prompt.user.contains("次の要旨・指示に沿って返信を作成してください: 英語で、少しユーモアを交えて返信してください"))
     }
 }

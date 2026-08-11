@@ -88,7 +88,7 @@ public struct PromptBuilder: Sendable {
         case .followUp:
             return "後で改めて連絡する旨の返信を作成してください。"
         case .custom(let instruction):
-            return instruction
+            return "次の要旨・指示に沿って返信を作成してください: \(instruction)"
         }
     }
 }

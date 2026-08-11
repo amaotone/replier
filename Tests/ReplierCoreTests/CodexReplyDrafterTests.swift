@@ -12,6 +12,11 @@ import Testing
         )
     }
 
+    @Test func defaultReasoningEffortIsMinimalAndOptionsSpanNoneToXhigh() {
+        #expect(CodexSettings.defaultReasoningEffort == "minimal")
+        #expect(CodexSettings.reasoningEffortOptions == ["none", "minimal", "low", "medium", "high", "xhigh"])
+    }
+
     @Test func draftThrowsDescriptiveErrorWhenCodexIsNotFound() async throws {
         let drafter = CodexReplyDrafter(client: nil)
 

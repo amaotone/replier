@@ -150,14 +150,31 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
 
 @MainActor
 @Suite struct PanelModelTests {
-    @Test func initialPhaseIsChoosing() {
+    @Test func initialPhaseIsComposing() {
         let model = PanelModel(
             contextText: "hello",
             sourceApp: .mail,
             drafter: StubDrafter(chunks: []),
             style: StyleProfile()
         )
-        #expect(model.phase == .choosing)
+        #expect(model.phase == .composing)
+    }
+
+    @Test func noGenerationStartsOnInit() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        // Give any stray background work a chance to run before asserting nothing did.
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(model.partials.isEmpty)
+        #expect(drafter.capturedRequest == nil)
     }
 
     @Test func slackContextDefaultsToneToCasual() {
@@ -384,7 +401,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(model.selectedText == "了解です。")
     }
 
-    @Test func resetToChoosingReturnsFromFailedToChoosingAndClearsPartials() async throws {
+    @Test func resetToComposingReturnsFromFailedToComposingAndClearsPartials() async throws {
         let model = PanelModel(
             contextText: "hello",
             sourceApp: .mail,
@@ -398,8 +415,8 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             return false
         }
 
-        model.resetToChoosing()
-        #expect(model.phase == .choosing)
+        model.resetToComposing()
+        #expect(model.phase == .composing)
         #expect(model.partials.isEmpty)
     }
 
@@ -420,6 +437,68 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             return
         }
         #expect(instruction == "英語で返信してください")
+    }
+
+    @Test func submitInstructionWithTextPassesCustomIntentToDrafter() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.instruction = "英語で返信してください"
+        model.submitInstruction()
+        try await waitUntilOnMain { model.phase == .ready }
+
+        guard case .custom(let instruction) = drafter.capturedRequest?.intent else {
+            Issue.record("expected custom intent to be captured")
+            return
+        }
+        #expect(instruction == "英語で返信してください")
+    }
+
+    @Test func submitInstructionWithEmptyTextFallsBackToAutoIntent() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.instruction = "   "
+        model.submitInstruction()
+        try await waitUntilOnMain { model.phase == .ready }
+
+        #expect(drafter.capturedRequest?.intent == .auto)
+    }
+
+    @Test func submitInstructionDuringGenerationCancelsPreviousAndStartsNew() async throws {
+        let drafter = SequencedDrafter(behaviors: [
+            .hang(firstChunk: "<<<short>>>\n古い生成中\n"),
+            .complete(chunks: chunked(validSentinelText)),
+        ])
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.instruction = "最初の指示"
+        model.submitInstruction()
+        try await waitUntilOnMain { !model.partials.isEmpty }
+        #expect(model.partials.first?.text == "古い生成中")
+
+        model.instruction = "新しい指示"
+        model.submitInstruction()
+        try await waitUntilOnMain { model.phase == .ready }
+
+        #expect(model.partials.count == 3)
+        #expect(model.partials[0].text == "了解です。")
+        #expect(drafter.cancelledCallIndices.contains(0))
     }
 
     @Test func regenerateCancelsPreviousGenerationAndReflectsOnlyTheNewOne() async throws {

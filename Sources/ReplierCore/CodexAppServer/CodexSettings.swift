@@ -8,13 +8,13 @@ public enum CodexSettings {
     public static let reasoningEffortDefaultsKey = "codexReasoningEffort"
 
     public static let defaultModel = "gpt-5.6-luna"
-    public static let defaultReasoningEffort = "low"
+    public static let defaultReasoningEffort = "minimal"
 
     /// `TurnStartParams.effort` (see `docs/reference/app-server-schema/v2/TurnStartParams.json`)
     /// types `ReasoningEffort` as a non-empty, model-advertised string rather than a fixed
     /// enum, so this list is a UI convenience covering the values Codex/GPT-5.x models
     /// commonly support, not a protocol-level constraint.
-    public static let reasoningEffortOptions = ["minimal", "low", "medium", "high", "xhigh"]
+    public static let reasoningEffortOptions = ["none", "minimal", "low", "medium", "high", "xhigh"]
 
     public static func currentModel(in defaults: UserDefaults = .standard) -> String {
         defaults.string(forKey: modelDefaultsKey) ?? defaultModel

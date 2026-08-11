@@ -34,7 +34,6 @@ final class PanelController {
                 drafter: self.drafter,
                 style: style
             )
-            model.choose(intent: .auto)
 
             let rootView = PanelView(
                 model: model,
@@ -58,10 +57,10 @@ final class PanelController {
     }
 
     private func confirm(text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
         hide()
-        Task {
-            await Paster.paste(text)
-        }
     }
 
     private func makePanel() -> FloatingPanel {
