@@ -264,6 +264,7 @@ UI Shell          Capture        Orchestrator     Adapter        app-server
 | ホットキー | [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) | 実績豊富、設定画面用のレコーダーUI同梱 |
 | テキスト取得/ペースト | `AXUIElement` / `CGEvent` の自前薄ラッパー | 各数十行で済み、依存を増やす価値がない |
 | LLM連携 | `codex app-server --listen stdio://` を常駐spawn + 自前JSON-RPC 2.0クライアント | Swiftからは自前実装が最短(公式SDKはTS/Pythonのみ)。イベントは `AsyncStream` でUIへ |
+| 生成モデル | デフォルト `gpt-5.6-luna` / reasoning effort `xhigh`(UserDefaultsで変更可) | 品質優先のユーザー指定(2026-08-11)。レイテンシが気になる場合はeffortを設定で下げる |
 | 永続化 | UserDefaults(設定)+ JSONファイル(文体サンプル) | MVPのデータ量では最速・最容易。編集diff蓄積が増えるP2でGRDB(SQLite)へ移行 |
 | プロジェクト構成 | `ReplierCore` SPMパッケージ(プロンプト組立・JSON-RPC・バックエンド抽象)+ 薄いアプリターゲット | コアをUI非依存にしてTDD可能に。ビルドも高速 |
 | テスト | Swift Testing(`@Test`) | 標準・高速。Coreパッケージを単体テスト、AppKit外殻は薄く保ち手動確認 |
