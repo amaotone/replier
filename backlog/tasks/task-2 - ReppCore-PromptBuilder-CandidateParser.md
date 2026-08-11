@@ -1,9 +1,10 @@
 ---
 id: TASK-2
-title: 'ReppCore: PromptBuilder / CandidateParser'
-status: To Do
+title: 'ReplierCore: PromptBuilder / CandidateParser'
+status: Done
 assignee: []
 created_date: '2026-08-11 06:50'
+updated_date: '2026-08-11 06:58'
 labels:
   - core
 dependencies: []
@@ -19,8 +20,8 @@ ordinal: 2000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 意図・トーン・文体サンプルがプロンプトに反映される
-- [ ] #2 3案のJSON出力契約が定義されている
-- [ ] #3 フェンス付き/前置きテキスト付き出力もパースできる
-- [ ] #4 全テストがswift testで通る
+- [x] #1 意図・トーン・文体サンプルがプロンプトに反映される
+- [x] #2 3案のJSON出力契約が定義されている
+- [x] #3 フェンス付き/前置きテキスト付き出力もパースできる
+- [x] #4 全テストがswift testで通る
 <!-- AC:END -->

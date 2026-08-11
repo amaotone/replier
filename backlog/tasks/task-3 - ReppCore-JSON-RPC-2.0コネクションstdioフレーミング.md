@@ -1,9 +1,10 @@
 ---
 id: TASK-3
-title: 'ReppCore: JSON-RPC 2.0コネクション(stdioフレーミング)'
-status: To Do
+title: 'ReplierCore: JSON-RPC 2.0コネクション(stdioフレーミング)'
+status: In Progress
 assignee: []
 created_date: '2026-08-11 06:50'
+updated_date: '2026-08-11 06:58'
 labels:
   - core
 dependencies: []

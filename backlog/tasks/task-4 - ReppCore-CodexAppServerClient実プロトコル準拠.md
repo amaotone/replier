@@ -1,9 +1,10 @@
 ---
 id: TASK-4
-title: 'ReppCore: CodexAppServerClient(実プロトコル準拠)'
+title: 'ReplierCore: CodexAppServerClient(実プロトコル準拠)'
 status: To Do
 assignee: []
 created_date: '2026-08-11 06:51'
+updated_date: '2026-08-11 06:58'
 labels:
   - core
 dependencies:
