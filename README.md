@@ -25,7 +25,22 @@ Codexアプリ・CLI・IDE拡張のいずれかで既にログイン済みであ
 
 ## インストール
 
-現状はソースからのビルドのみに対応している。
+1. [Releases](https://github.com/amaotone/replier/releases)から最新の`Replier-vX.Y.Z.dmg`をダウンロード(zipでの配布もあり)
+2. dmgを開き、`Replier.app`を`Applications`へドラッグ
+3. 初回起動時はGatekeeperの警告が出る(配布物はad-hoc署名のため)。Finderでアプリを右クリック(またはControl+クリック)して「開く」を選ぶ。コマンド派はターミナルで以下を実行してもよい。
+
+   ```sh
+   xattr -cr /Applications/Replier.app
+   ```
+
+4. メニューバーのアイコンから起動し、オンボーディングでアクセシビリティ権限を許可する
+5. 動作には[Codex CLI](https://developers.openai.com/codex)のログインが必要。詳細は上記「動作要件」を参照
+
+将来的にはnotarized配布やHomebrew Caskでのインストールに対応する予定。
+
+## ソースからビルド(開発者向け)
+
+dmg/zipを使わずソースからビルドする場合。
 
 ```sh
 git clone https://github.com/amaotone/replier.git
@@ -33,15 +48,7 @@ cd replier
 Scripts/build-app.sh
 ```
 
-ビルドが成功すると`dist/Replier.app`が生成されるので、`/Applications`にコピーして使う。
-
-**Gatekeeperについて**: 配布物はad-hoc署名のため、初回起動時にGatekeeperの警告が出ることがある。その場合はFinderでアプリを右クリックして「開く」を選ぶか、ターミナルで以下を実行する。
-
-```sh
-xattr -cr /Applications/Replier.app
-```
-
-将来的にはnotarized配布やHomebrew Caskでのインストールに対応する予定。
+ビルドが成功すると`dist/Replier.app`が生成されるので、`/Applications`にコピーして使う。Gatekeeper警告への対処は上記「インストール」の手順3を参照。dmgとして配布したい場合は`Scripts/make-dmg.sh`で`dist/Replier.dmg`を生成できる。
 
 ## 使い方
 
@@ -96,11 +103,7 @@ swift test
 
 135以上のテストケースがある。
 
-`.app`ビルドは[XcodeGen](https://github.com/yonaskolb/XcodeGen)が生成する`Replier.xcodeproj`を`xcodebuild`でビルドして作る。`project.yml`が唯一のソースで、`Replier.xcodeproj`はビルドのたびに再生成される(gitignore対象)。
-
-```sh
-Scripts/build-app.sh
-```
+`.app`ビルドは[XcodeGen](https://github.com/yonaskolb/XcodeGen)が生成する`Replier.xcodeproj`を`xcodebuild`でビルドして作る(`Scripts/build-app.sh`。手順は上記「ソースからビルド」を参照)。`project.yml`が唯一のソースで、`Replier.xcodeproj`はビルドのたびに再生成される(gitignore対象)。
 
 タスク管理には[Backlog.md](https://github.com/MrLesk/Backlog.md)を使用している。
 

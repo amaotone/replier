@@ -42,14 +42,22 @@ jobs:
       - name: Create zip archive
         run: ditto -c -k --keepParent dist/Replier.app "Replier-${GITHUB_REF_NAME}.zip"
 
+      - name: Create DMG
+        run: Scripts/make-dmg.sh "Replier-${GITHUB_REF_NAME}.dmg"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NOTES="## Gatekeeper について
-          このアプリは ad-hoc 署名(無料の Apple Developer 証明書なし)で配布されています。初回起動時に Gatekeeper がブロックする場合は、Finder で Replier.app を右クリック(または Control+クリック)して「開く」を選び、表示されるダイアログで再度「開く」を選択してください。"
+          NOTES="## インストール方法
+
+          1. \`Replier-${GITHUB_REF_NAME}.dmg\` をダウンロードして開き、\`Replier.app\` を \`Applications\` へドラッグ(zip でも可)
+          2. 初回起動時は Gatekeeper 警告が出るため、Finder で Replier.app を右クリック(または Control+クリック)して「開く」を選択(またはターミナルで \`xattr -cr /Applications/Replier.app\`)
+          3. 起動後のオンボーディングでアクセシビリティ権限を許可
+          4. 動作には [Codex CLI](https://developers.openai.com/codex) のインストールとログイン(ChatGPT サブスクまたは API キー)が必要"
           gh release create "${GITHUB_REF_NAME}" \
             --title "Replier ${GITHUB_REF_NAME}" \
             --notes "$NOTES" \
             --generate-notes \
-            "Replier-${GITHUB_REF_NAME}.zip"
+            "Replier-${GITHUB_REF_NAME}.zip" \
+            "Replier-${GITHUB_REF_NAME}.dmg"
