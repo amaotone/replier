@@ -9,8 +9,13 @@ public struct PromptBuilder: Sendable {
         var sections: [String] = [
             """
             あなたは優秀なアシスタントです。ユーザー本人になりきり、一人称で返信文を作成してください。
-            出力は次のJSONオブジェクトのみとし、マークダウンのコードフェンスや前置き・説明などの余計な文章は一切含めないでください。
-            {"candidates":[{"label":"short","text":"..."},{"label":"standard","text":"..."},{"label":"polite","text":"..."}]}
+            出力は次の形式のプレーンテキストのみとし、前置きや説明、マークダウンのコードフェンスなどの余計な文章は一切含めないでください。センチネル行(<<<...>>>)はそれぞれ単独の行に、必ずこの順序で出力してください。
+            <<<short>>>
+            (短め案の本文)
+            <<<standard>>>
+            (標準案の本文)
+            <<<polite>>>
+            (丁寧案の本文)
             返信は届いたメッセージと同じ言語で書いてください。
             - short: 簡潔な返信(1-2文)
             - standard: 標準的な長さの返信
@@ -72,6 +77,8 @@ public struct PromptBuilder: Sendable {
 
     private func intentInstruction(for intent: ReplyIntent) -> String {
         switch intent {
+        case .auto:
+            return "メッセージ内容から、送り手が最も自然に返すべき意図(承諾・お断り・質問への回答・確認など)を推測して返信を作ってください。"
         case .accept:
             return "承諾する返信を作成してください。"
         case .decline:

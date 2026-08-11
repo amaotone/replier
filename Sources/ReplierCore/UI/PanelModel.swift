@@ -5,7 +5,7 @@ import Observation
 public final class PanelModel {
     public enum Phase: Equatable {
         case choosing
-        case generating(charCount: Int)
+        case generating
         case ready
         case failed(String)
     }
@@ -15,12 +15,14 @@ public final class PanelModel {
     public let sourceApp: SourceApp
     public var tone: Tone
     public var customInstruction: String = ""
-    public private(set) var candidates: [ReplyCandidate] = []
+    public private(set) var partials: [PartialCandidate] = []
     public private(set) var selectedIndex: Int = 0
+    public private(set) var lastIntent: ReplyIntent = .auto
 
     private let drafter: any ReplyDrafting
     private let style: StyleProfile
-    private let parser = CandidateParser()
+    private var generationTask: Task<Void, Never>?
+    private var currentGeneration = 0
 
     public init(contextText: String, sourceApp: SourceApp, drafter: any ReplyDrafting, style: StyleProfile) {
         self.contextText = contextText
@@ -30,9 +32,17 @@ public final class PanelModel {
         self.style = style
     }
 
-    public func choose(intent: ReplyIntent) async {
-        phase = .generating(charCount: 0)
-        candidates = []
+    /// Cancels any in-flight generation and starts a new one. Safe to call while a
+    /// generation is already streaming (e.g. a chip/tone change acting as "regenerate").
+    public func choose(intent: ReplyIntent) {
+        generationTask?.cancel()
+        currentGeneration += 1
+        let generation = currentGeneration
+        lastIntent = intent
+
+        phase = .generating
+        partials = []
+        selectedIndex = 0
 
         let request = ReplyRequest(
             context: CapturedContext(text: contextText, sourceApp: sourceApp),
@@ -41,41 +51,74 @@ public final class PanelModel {
             style: style
         )
 
-        var accumulated = ""
+        generationTask = Task { @MainActor [weak self] in
+            await self?.runGeneration(request: request, generation: generation)
+        }
+    }
+
+    /// Re-runs generation with whatever intent was last used (defaults to `.auto`).
+    public func regenerate() {
+        choose(intent: lastIntent)
+    }
+
+    private func isStale(_ generation: Int) -> Bool {
+        generation != currentGeneration || Task.isCancelled
+    }
+
+    private func runGeneration(request: ReplyRequest, generation: Int) async {
+        var parser = IncrementalCandidateParser()
+
         do {
             let stream = try await drafter.draft(request)
             for try await chunk in stream {
-                accumulated += chunk
-                phase = .generating(charCount: accumulated.count)
+                if isStale(generation) { return }
+                partials = parser.feed(chunk)
             }
         } catch {
+            if isStale(generation) { return }
             phase = .failed(String(describing: error))
             return
         }
 
-        do {
-            let parsed = try parser.parse(accumulated)
-            candidates = parsed
-            selectedIndex = parsed.count == 3 ? 1 : 0
+        if isStale(generation) { return }
+
+        let final = parser.finish()
+        partials = final
+        if final.contains(where: { !$0.text.isEmpty }) {
             phase = .ready
-        } catch {
-            phase = .failed(String(describing: error))
+            selectedIndex = final.firstIndex(where: { $0.label == .standard }) ?? 0
+        } else {
+            phase = .failed("返信案を生成できませんでした。")
         }
     }
 
     public func resetToChoosing() {
+        generationTask?.cancel()
         phase = .choosing
-        candidates = []
+        partials = []
+        selectedIndex = 0
     }
 
     public func moveSelection(_ delta: Int) {
-        guard phase == .ready, !candidates.isEmpty else { return }
-        let count = candidates.count
+        guard !partials.isEmpty else { return }
+        let count = partials.count
         selectedIndex = ((selectedIndex + delta) % count + count) % count
     }
 
+    /// The selected candidate's text, but only once it has finished streaming — earlier
+    /// candidates remain confirmable even while later ones are still in flight.
     public var selectedText: String? {
-        guard phase == .ready, candidates.indices.contains(selectedIndex) else { return nil }
-        return candidates[selectedIndex].text
+        guard partials.indices.contains(selectedIndex) else { return nil }
+        let candidate = partials[selectedIndex]
+        return candidate.isComplete ? candidate.text : nil
+    }
+
+    /// Returns the selected candidate's text (if confirmable) and cancels the in-flight
+    /// generation so a stray late chunk can't mutate state after the panel is dismissed.
+    @discardableResult
+    public func confirmSelection() -> String? {
+        guard let text = selectedText else { return nil }
+        generationTask?.cancel()
+        return text
     }
 }

@@ -1,10 +1,10 @@
 ---
 id: TASK-10
 title: '生成高速化: effortデフォルト見直し + プリウォーム'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 08:07'
-updated_date: '2026-08-11 08:07'
+updated_date: '2026-08-11 08:10'
 labels:
   - core
 dependencies: []
@@ -20,6 +20,12 @@ ordinal: 10000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 デフォルトeffortがlowになりテストが更新されている
-- [ ] #2 起動直後の初回生成でapp-server起動待ちが発生しない(プリウォーム済み)
+- [x] #1 デフォルトeffortがlowになりテストが更新されている
+- [x] #2 起動直後の初回生成でapp-server起動待ちが発生しない(プリウォーム済み)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+effortデフォルトlow化+起動時プリウォーム。prewarm→draftでinitializeハンドシェイクが1回だけであることをテストで担保
+<!-- SECTION:NOTES:END -->

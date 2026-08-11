@@ -13,7 +13,7 @@ public struct CapturedContext: Sendable, Equatable {
 }
 
 public enum ReplyIntent: Sendable, Equatable {
-    case accept, decline, question, followUp
+    case auto, accept, decline, question, followUp
     case custom(String)
 }
 
@@ -60,10 +60,4 @@ public struct ReplyCandidate: Sendable, Equatable, Codable {
         self.label = label
         self.text = text
     }
-}
-
-public enum CandidateParserError: Error, Equatable {
-    case noJSONFound
-    case malformed(String)
-    case wrongCandidateCount(Int)
 }

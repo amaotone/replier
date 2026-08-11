@@ -19,16 +19,20 @@ import Testing
         )
     }
 
-    @Test func systemPromptContainsJSONContractKeys() {
+    @Test func systemPromptContainsSentinelContract() {
         let prompt = builder.build(request())
-        #expect(prompt.system.contains("\"candidates\""))
-        #expect(prompt.system.contains("\"label\""))
-        #expect(prompt.system.contains("\"short\""))
-        #expect(prompt.system.contains("\"standard\""))
-        #expect(prompt.system.contains("\"polite\""))
+        #expect(prompt.system.contains("<<<short>>>"))
+        #expect(prompt.system.contains("<<<standard>>>"))
+        #expect(prompt.system.contains("<<<polite>>>"))
     }
 
-    @Test func systemPromptInstructsFirstPersonAndJSONOnlyOutput() {
+    @Test func systemPromptNoLongerContainsJSONContract() {
+        let prompt = builder.build(request())
+        #expect(!prompt.system.contains("candidates"))
+        #expect(!prompt.system.contains("\"label\""))
+    }
+
+    @Test func systemPromptInstructsFirstPersonAndPlainTextOnlyOutput() {
         let prompt = builder.build(request())
         #expect(prompt.system.contains("一人称"))
         #expect(prompt.system.contains("マークダウン"))
@@ -71,6 +75,11 @@ import Testing
     @Test func userPromptContainsIncomingMessageText() {
         let prompt = builder.build(request(text: "来週火曜、空いてますか？"))
         #expect(prompt.user.contains("来週火曜、空いてますか？"))
+    }
+
+    @Test func userPromptReflectsAutoIntent() {
+        let prompt = builder.build(request(intent: .auto))
+        #expect(prompt.user.contains("推測"))
     }
 
     @Test func userPromptReflectsAcceptIntent() {

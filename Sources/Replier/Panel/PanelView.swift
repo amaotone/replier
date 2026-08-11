@@ -38,7 +38,7 @@ struct PanelView: View {
             return .handled
         }
         .onKeyPress(.return) {
-            guard let text = model.selectedText else { return .ignored }
+            guard let text = model.confirmSelection() else { return .ignored }
             onConfirm(text)
             return .handled
         }
@@ -74,12 +74,11 @@ struct PanelView: View {
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(submitCustomInstruction)
         }
-        .disabled(isGenerating)
     }
 
     private func intentButton(_ title: String, intent: ReplyIntent) -> some View {
         Button(title) {
-            Task { await model.choose(intent: intent) }
+            model.choose(intent: intent)
         }
         .buttonStyle(.bordered)
     }
@@ -87,7 +86,7 @@ struct PanelView: View {
     private func submitCustomInstruction() {
         let instruction = customInstructionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !instruction.isEmpty else { return }
-        Task { await model.choose(intent: .custom(instruction)) }
+        model.choose(intent: .custom(instruction))
     }
 
     private var tonePicker: some View {
@@ -96,12 +95,9 @@ struct PanelView: View {
             Text("カジュアル").tag(Tone.casual)
         }
         .pickerStyle(.segmented)
-        .disabled(isGenerating)
-    }
-
-    private var isGenerating: Bool {
-        if case .generating = model.phase { return true }
-        return false
+        .onChange(of: model.tone) { _, _ in
+            model.regenerate()
+        }
     }
 
     @ViewBuilder
@@ -109,18 +105,22 @@ struct PanelView: View {
         switch model.phase {
         case .choosing:
             centered {
-                Text("上のボタンから返信の意図を選んでください")
+                Text("まもなく返信案を生成します…")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-        case .generating(let charCount):
-            centered {
-                VStack(spacing: 8) {
-                    ProgressView()
-                    Text("生成中… (\(charCount)文字)")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+        case .generating:
+            if model.partials.isEmpty {
+                centered {
+                    VStack(spacing: 8) {
+                        ProgressView()
+                        Text("生成中…")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+            } else {
+                candidateList
             }
         case .ready:
             candidateList
@@ -134,7 +134,7 @@ struct PanelView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     Button("やり直す") {
-                        model.resetToChoosing()
+                        model.regenerate()
                     }
                     .buttonStyle(.bordered)
                 }
@@ -150,13 +150,13 @@ struct PanelView: View {
 
     private var candidateList: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(model.candidates.enumerated()), id: \.offset) { index, candidate in
+            ForEach(Array(model.partials.enumerated()), id: \.offset) { index, candidate in
                 candidateRow(index: index, candidate: candidate)
             }
         }
     }
 
-    private func candidateRow(index: Int, candidate: ReplyCandidate) -> some View {
+    private func candidateRow(index: Int, candidate: PartialCandidate) -> some View {
         let isSelected = index == model.selectedIndex
         return HStack(alignment: .top, spacing: 8) {
             Text(badgeLabel(candidate.label))
@@ -168,15 +168,23 @@ struct PanelView: View {
             Text(candidate.text)
                 .font(.system(size: 13))
                 .multilineTextAlignment(.leading)
+            if !candidate.isComplete {
+                ProgressView()
+                    .controlSize(.mini)
+            }
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(candidate.isComplete ? 1.0 : 0.6)
         .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
+            guard candidate.isComplete else { return }
             model.moveSelection(index - model.selectedIndex)
-            onConfirm(candidate.text)
+            if let text = model.confirmSelection() {
+                onConfirm(text)
+            }
         }
         .onTapGesture(count: 1) {
             model.moveSelection(index - model.selectedIndex)

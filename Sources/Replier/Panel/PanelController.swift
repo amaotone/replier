@@ -34,6 +34,7 @@ final class PanelController {
                 drafter: self.drafter,
                 style: style
             )
+            model.choose(intent: .auto)
 
             let rootView = PanelView(
                 model: model,
