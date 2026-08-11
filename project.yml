@@ -13,7 +13,7 @@ settings:
   SWIFT_VERSION: "6.0"
   CODE_SIGN_STYLE: Automatic
   CODE_SIGN_IDENTITY: "-"
-  ENABLE_HARDENED_RUNTIME: NO
+  ENABLE_HARDENED_RUNTIME: YES
 
 targets:
   Replier:
@@ -39,7 +39,7 @@ targets:
         SWIFT_VERSION: "6.0"
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "-"
-        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_HARDENED_RUNTIME: YES
     info:
       path: Generated/Replier-Info.plist
       properties:

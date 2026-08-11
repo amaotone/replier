@@ -38,6 +38,8 @@ Codexアプリ・CLI・IDE拡張のいずれかで既にログイン済みであ
    xattr -cr /Applications/Replier.app
    ```
 
+   (v0.2.0以降はnotarized配布となり、この手順は不要になる予定)
+
 4. メニューバーのアイコンから起動し、オンボーディングでアクセシビリティ権限を許可する
 5. 動作には[Codex CLI](https://developers.openai.com/codex)のログインが必要。詳細は上記「動作要件」を参照
 
@@ -54,6 +56,8 @@ Scripts/build-app.sh
 ```
 
 ビルドが成功すると`dist/Replier.app`が生成されるので、`/Applications`にコピーして使う。Gatekeeper警告への対処は上記「インストール」の手順3を参照。dmgとして配布したい場合は`Scripts/make-dmg.sh`で`dist/Replier.dmg`を生成できる。
+
+署名IDは環境変数`REPLIER_SIGN_IDENTITY`で切り替えられる(デフォルトは`-`、ad-hoc署名)。Developer ID Application証明書を保有している場合は`REPLIER_SIGN_IDENTITY="Developer ID Application" Scripts/build-app.sh`でnotarization向けの署名済みビルドを作れる。
 
 ## 使い方
 
@@ -109,6 +113,8 @@ swift test
 135以上のテストケースがある。
 
 `.app`ビルドは[XcodeGen](https://github.com/yonaskolb/XcodeGen)が生成する`Replier.xcodeproj`を`xcodebuild`でビルドして作る(`Scripts/build-app.sh`。手順は上記「ソースからビルド」を参照)。`project.yml`が唯一のソースで、`Replier.xcodeproj`はビルドのたびに再生成される(gitignore対象)。
+
+リリースはローカルの`Scripts/release.sh X.Y.Z`で行う(GitHub Actionsでの自動リリースは廃止)。バージョン更新・テスト・コミット・タグ作成に続けて、Developer ID Application証明書での署名・notarization・DMG/zip作成までを一気通貫で実行し、最後に確認プロンプト(`yes`の入力が必要)を経てタグのpushと`gh release create`を行う。`--dry-run`を付けるとpush/リリース作成の手前で停止する。
 
 タスク管理には[Backlog.md](https://github.com/MrLesk/Backlog.md)を使用している。
 
