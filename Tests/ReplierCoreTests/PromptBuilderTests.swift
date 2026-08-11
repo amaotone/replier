@@ -106,4 +106,47 @@ import Testing
         let prompt = builder.build(request(intent: .custom("英語で、少しユーモアを交えて返信してください")))
         #expect(prompt.user.contains("次の要旨・指示に沿って返信を作成してください: 英語で、少しユーモアを交えて返信してください"))
     }
+
+    @Test func systemPromptDefinesRoleModelForIncomingMessageAndGist() {
+        let prompt = builder.build(request())
+        #expect(prompt.system.contains("受信メッセージ"))
+        #expect(prompt.system.contains("返信で伝えたい内容"))
+        #expect(prompt.system.contains("返答すべきメッセージでもない"))
+    }
+
+    @Test func systemPromptForbidsConvertingRequestsIntoApologies() {
+        let prompt = builder.build(request())
+        #expect(prompt.system.contains("謝罪や自分の行動改善の約束に変換してはならない"))
+    }
+
+    @Test func systemPromptIncludesOneShotContrastExample() {
+        let prompt = builder.build(request())
+        #expect(prompt.system.contains("✅"))
+        #expect(prompt.system.contains("❌"))
+        #expect(prompt.system.contains("恐れ入りますが、要点を絞って簡潔にご説明いただけると助かります。"))
+        #expect(prompt.system.contains("すみません、今後は簡潔に伝えます。"))
+    }
+
+    @Test func userPromptStructuresIncomingMessageUnderFirstHeading() {
+        let prompt = builder.build(request(text: "来週火曜、空いてますか？"))
+        #expect(prompt.user.contains("# 受信メッセージ(これに返信する)"))
+        let headingRange = prompt.user.range(of: "# 受信メッセージ(これに返信する)")!
+        let textRange = prompt.user.range(of: "来週火曜、空いてますか？")!
+        #expect(headingRange.upperBound <= textRange.lowerBound)
+    }
+
+    @Test func userPromptStructuresCustomInstructionUnderSecondHeadingAndDoesNotAnswerIt() {
+        let prompt = builder.build(request(intent: .custom("もっと簡潔に話してよ。わかりにくすぎる")))
+        #expect(prompt.user.contains("# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)"))
+        let headingRange = prompt.user.range(of: "# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)")!
+        let instructionRange = prompt.user.range(of: "もっと簡潔に話してよ。わかりにくすぎる")!
+        #expect(headingRange.upperBound <= instructionRange.lowerBound)
+    }
+
+    @Test func userPromptSecondHeadingAppliesUniformlyToAutoAndFixedIntents() {
+        for intent in [ReplyIntent.auto, .accept, .decline, .question, .followUp] {
+            let prompt = builder.build(request(intent: intent))
+            #expect(prompt.user.contains("# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)"))
+        }
+    }
 }
