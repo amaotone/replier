@@ -27,6 +27,8 @@ targets:
     sources:
       - path: Sources/Replier
       - path: Sources/ReplierCore
+      - path: Assets/AppIcon.icns
+        buildPhase: resources
     dependencies:
       - package: KeyboardShortcuts
     settings:
@@ -48,5 +50,6 @@ targets:
         CFBundleName: Replier
         CFBundleDisplayName: Replier
         CFBundlePackageType: APPL
+        CFBundleIconFile: AppIcon
         NSHumanReadableCopyright: "Copyright © 2026 amaotone. All rights reserved."
         NSPrincipalClass: NSApplication

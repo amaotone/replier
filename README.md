@@ -113,3 +113,5 @@ backlog task list --plain
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+アプリアイコンのグリフは [Hugeicons](https://hugeicons.com) の "Re" アイコン([@hugeicons/core-free-icons](https://www.npmjs.com/package/@hugeicons/core-free-icons)、MIT License)を使用しています。
