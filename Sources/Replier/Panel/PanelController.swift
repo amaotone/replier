@@ -60,10 +60,15 @@ final class PanelController {
     }
 
     private func confirm(text: String) {
+        let center = panel.map { NSPoint(x: $0.frame.midX, y: $0.frame.midY) }
+
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         hide()
+
+        guard let center else { return }
+        ToastPresenter.shared.show("コピーしました", centeredAt: center)
     }
 
     private func makePanel() -> FloatingPanel {
