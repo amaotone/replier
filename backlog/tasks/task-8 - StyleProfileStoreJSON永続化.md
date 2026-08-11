@@ -1,9 +1,10 @@
 ---
 id: TASK-8
 title: StyleProfileStore(JSON永続化)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-11 06:51'
+updated_date: '2026-08-11 07:16'
 labels:
   - core
 dependencies: []
@@ -19,6 +20,6 @@ ordinal: 8000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 サンプルの追加・削除・読込ができる
-- [ ] #2 永続化ラウンドトリップのテストがある
+- [x] #1 サンプルの追加・削除・読込ができる
+- [x] #2 永続化ラウンドトリップのテストがある
 <!-- AC:END -->
