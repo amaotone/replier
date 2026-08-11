@@ -2,16 +2,14 @@ import Foundation
 import ReplierCore
 
 /// Yields a canned sentinel-delimited response in chunks so the panel UI is demo-able
-/// before real Codex wiring lands. The chunking deliberately splits the `<<<standard>>>`
+/// before real Codex wiring lands. The chunking deliberately splits the `<<<long>>>`
 /// sentinel across two chunks to regression-proof the incremental parser's line buffering.
 struct MockReplyDrafter: ReplyDrafting {
     private static let cannedText = """
     <<<short>>>
     了解です、対応します。
-    <<<standard>>>
-    ご連絡ありがとうございます。承知しました、対応いたします。
-    <<<polite>>>
-    ご連絡いただきありがとうございます。内容を確認いたしました。ご期待に沿えるよう対応いたします。
+    <<<long>>>
+    ご連絡ありがとうございます。承知しました、内容を確認の上で対応いたします。何かご不明な点がございましたら、改めてご連絡いたします。
     """
 
     func draft(_ request: ReplyRequest) async throws -> AsyncThrowingStream<String, Error> {
@@ -29,10 +27,10 @@ struct MockReplyDrafter: ReplyDrafting {
     }
 
     /// Splits `text` into small demo chunks, forcing a break in the middle of
-    /// `<<<standard>>>` (after "<<<sta") so the parser must reassemble a sentinel that
+    /// `<<<long>>>` (after "<<<lon") so the parser must reassemble a sentinel that
     /// arrives split across two deltas.
     private static func chunks(for text: String) -> [String] {
-        guard let sentinelRange = text.range(of: "<<<standard>>>") else {
+        guard let sentinelRange = text.range(of: "<<<long>>>") else {
             return evenChunks(text, count: 10)
         }
         let splitPoint = text.index(sentinelRange.lowerBound, offsetBy: 6)

@@ -5,11 +5,9 @@ import Testing
     private let sampleText = """
     <<<short>>>
     短めの本文
-    <<<standard>>>
-    標準の本文
+    <<<long>>>
+    長めの本文
     複数行もあり得る
-    <<<polite>>>
-    丁寧な本文
     """
 
     @Test func splittingAcrossEveryDeltaBoundaryProducesSameResult() {
@@ -22,16 +20,24 @@ import Testing
             _ = parser.feed(second)
             let result = parser.finish()
 
-            #expect(result.count == 3, "split at \(splitPoint) produced \(result.count) candidates")
-            guard result.count == 3 else { continue }
+            #expect(result.count == 2, "split at \(splitPoint) produced \(result.count) candidates")
+            guard result.count == 2 else { continue }
             #expect(result[0].label == .short)
             #expect(result[0].text == "短めの本文")
-            #expect(result[1].label == .standard)
-            #expect(result[1].text == "標準の本文\n複数行もあり得る")
-            #expect(result[2].label == .polite)
-            #expect(result[2].text == "丁寧な本文")
+            #expect(result[1].label == .long)
+            #expect(result[1].text == "長めの本文\n複数行もあり得る")
             #expect(result.allSatisfy { $0.isComplete })
         }
+    }
+
+    @Test func bothLabelsParsedInOrderAndComplete() {
+        var parser = IncrementalCandidateParser()
+        _ = parser.feed(sampleText)
+        let result = parser.finish()
+
+        #expect(result.count == 2)
+        #expect(result.map(\.label) == [.short, .long])
+        #expect(result.allSatisfy { $0.isComplete && !$0.text.isEmpty })
     }
 
     @Test func feedYieldsGrowingPartialsAsLinesArrive() {
@@ -49,7 +55,7 @@ import Testing
         #expect(result[0].text == "短めの本文")
         #expect(result[0].isComplete == false)
 
-        result = parser.feed("<<<standard>>>\n")
+        result = parser.feed("<<<long>>>\n")
         #expect(result.count == 2)
         #expect(result[0].isComplete == true)
         #expect(result[1].isComplete == false)
@@ -76,17 +82,17 @@ import Testing
 
     @Test func duplicateLabelIsTreatedAsLiteralText() {
         var parser = IncrementalCandidateParser()
-        _ = parser.feed("<<<short>>>\n短め\n<<<standard>>>\n標準\n<<<short>>>\n重複\n")
+        _ = parser.feed("<<<short>>>\n短め\n<<<long>>>\n長め\n<<<short>>>\n重複\n")
         let result = parser.finish()
 
         #expect(result.count == 2)
         #expect(result[0].label == .short)
         #expect(result[0].text == "短め")
-        #expect(result[1].label == .standard)
-        #expect(result[1].text == "標準\n<<<short>>>\n重複")
+        #expect(result[1].label == .long)
+        #expect(result[1].text == "長め\n<<<short>>>\n重複")
     }
 
-    @Test func fewerThanThreeCandidatesAtFinishIsFine() {
+    @Test func singleCandidateAtFinishIsFine() {
         var parser = IncrementalCandidateParser()
         _ = parser.feed("<<<short>>>\n短めだけ\n")
         let result = parser.finish()
@@ -126,13 +132,13 @@ import Testing
 
     @Test func sentinelSplitAcrossManyTinyDeltas() {
         var parser = IncrementalCandidateParser()
-        for ch in "<<<standard>>>\n本文\n" {
+        for ch in "<<<long>>>\n本文\n" {
             _ = parser.feed(String(ch))
         }
         let final = parser.finish()
 
         #expect(final.count == 1)
-        #expect(final[0].label == .standard)
+        #expect(final[0].label == .long)
         #expect(final[0].text == "本文")
     }
 

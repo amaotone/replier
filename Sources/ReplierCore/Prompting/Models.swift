@@ -2,6 +2,12 @@ public enum SourceApp: String, Sendable, Codable, Equatable {
     case slack, mail, browser, other
 }
 
+/// Where the reply will be sent, chosen by the user in the panel (defaulted from
+/// `SourceApp` at capture time, but independently editable — see `PanelModel.situation`).
+public enum Situation: String, Sendable, Codable, CaseIterable {
+    case mail, chat
+}
+
 public struct CapturedContext: Sendable, Equatable {
     public let text: String
     public let sourceApp: SourceApp
@@ -13,7 +19,7 @@ public struct CapturedContext: Sendable, Equatable {
 }
 
 public enum ReplyIntent: Sendable, Equatable {
-    case auto, accept, decline, question, followUp
+    case accept, decline, question, followUp
     case custom(String)
 }
 
@@ -33,12 +39,14 @@ public struct ReplyRequest: Sendable, Equatable {
     public let context: CapturedContext
     public let intent: ReplyIntent
     public let tone: Tone
+    public let situation: Situation
     public let style: StyleProfile
 
-    public init(context: CapturedContext, intent: ReplyIntent, tone: Tone, style: StyleProfile) {
+    public init(context: CapturedContext, intent: ReplyIntent, tone: Tone, situation: Situation, style: StyleProfile) {
         self.context = context
         self.intent = intent
         self.tone = tone
+        self.situation = situation
         self.style = style
     }
 }
@@ -50,7 +58,7 @@ public struct Prompt: Sendable, Equatable {
 
 public struct ReplyCandidate: Sendable, Equatable, Codable {
     public enum Label: String, Sendable, Codable, CaseIterable {
-        case short, standard, polite
+        case short, long
     }
 
     public let label: Label

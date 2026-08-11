@@ -4,7 +4,7 @@ import ReplierCore
 
 @MainActor
 final class PanelController {
-    private static let panelSize = NSSize(width: 640, height: 420)
+    private static let panelSize = NSSize(width: 760, height: 460)
 
     private var panel: FloatingPanel?
     private let drafter: any ReplyDrafting
@@ -49,6 +49,9 @@ final class PanelController {
             self.position(panel)
             panel.orderFrontRegardless()
             panel.makeKey()
+            // Bumped after the panel is key so PanelView's `.onChange(of:)` handler (not
+            // `.onAppear`, which fires too early) can reliably refocus the instruction field.
+            model.requestFocus()
         }
     }
 

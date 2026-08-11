@@ -8,6 +8,7 @@ import Testing
             context: CapturedContext(text: "明日の会議の件", sourceApp: .mail),
             intent: .accept,
             tone: .business,
+            situation: .mail,
             style: StyleProfile()
         )
     }

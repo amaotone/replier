@@ -14,10 +14,8 @@ public struct PartialCandidate: Sendable, Equatable {
 /// ```
 /// <<<short>>>
 /// (short body)
-/// <<<standard>>>
-/// (standard body)
-/// <<<polite>>>
-/// (polite body)
+/// <<<long>>>
+/// (long body)
 /// ```
 /// Network deltas can split a sentinel line at any position, so lines are buffered until
 /// a terminating newline (or `finish()`) arrives before being classified.

@@ -9,12 +9,14 @@ import Testing
         sourceApp: SourceApp = .mail,
         intent: ReplyIntent = .accept,
         tone: Tone = .business,
+        situation: Situation = .mail,
         samples: [String] = []
     ) -> ReplyRequest {
         ReplyRequest(
             context: CapturedContext(text: text, sourceApp: sourceApp),
             intent: intent,
             tone: tone,
+            situation: situation,
             style: StyleProfile(samples: samples)
         )
     }
@@ -22,8 +24,13 @@ import Testing
     @Test func systemPromptContainsSentinelContract() {
         let prompt = builder.build(request())
         #expect(prompt.system.contains("<<<short>>>"))
-        #expect(prompt.system.contains("<<<standard>>>"))
-        #expect(prompt.system.contains("<<<polite>>>"))
+        #expect(prompt.system.contains("<<<long>>>"))
+    }
+
+    @Test func systemPromptDefinesShortAndLongLengths() {
+        let prompt = builder.build(request())
+        #expect(prompt.system.contains("1〜2文"))
+        #expect(prompt.system.contains("3〜6文"))
     }
 
     @Test func systemPromptNoLongerContainsJSONContract() {
@@ -48,14 +55,14 @@ import Testing
         #expect(prompt.system.contains("砕けた口調"))
     }
 
-    @Test func systemPromptReflectsSlackSourceApp() {
-        let prompt = builder.build(request(sourceApp: .slack))
+    @Test func systemPromptReflectsChatSituation() {
+        let prompt = builder.build(request(situation: .chat))
         #expect(prompt.system.contains("チャット"))
         #expect(prompt.system.contains("挨拶や署名は不要"))
     }
 
-    @Test func systemPromptReflectsMailSourceApp() {
-        let prompt = builder.build(request(sourceApp: .mail))
+    @Test func systemPromptReflectsMailSituation() {
+        let prompt = builder.build(request(situation: .mail))
         #expect(prompt.system.contains("宛名"))
         #expect(prompt.system.contains("結び"))
     }
@@ -75,11 +82,6 @@ import Testing
     @Test func userPromptContainsIncomingMessageText() {
         let prompt = builder.build(request(text: "来週火曜、空いてますか？"))
         #expect(prompt.user.contains("来週火曜、空いてますか？"))
-    }
-
-    @Test func userPromptReflectsAutoIntent() {
-        let prompt = builder.build(request(intent: .auto))
-        #expect(prompt.user.contains("推測"))
     }
 
     @Test func userPromptReflectsAcceptIntent() {
@@ -143,8 +145,8 @@ import Testing
         #expect(headingRange.upperBound <= instructionRange.lowerBound)
     }
 
-    @Test func userPromptSecondHeadingAppliesUniformlyToAutoAndFixedIntents() {
-        for intent in [ReplyIntent.auto, .accept, .decline, .question, .followUp] {
+    @Test func userPromptSecondHeadingAppliesUniformlyAcrossFixedIntents() {
+        for intent in [ReplyIntent.accept, .decline, .question, .followUp] {
             let prompt = builder.build(request(intent: intent))
             #expect(prompt.user.contains("# 返信で伝えたい内容(これを相手向けの文章に仕上げる。これに返答しない)"))
         }

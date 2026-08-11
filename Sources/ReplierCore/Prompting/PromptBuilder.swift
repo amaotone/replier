@@ -12,14 +12,11 @@ public struct PromptBuilder: Sendable {
             出力は次の形式のプレーンテキストのみとし、前置きや説明、マークダウンのコードフェンスなどの余計な文章は一切含めないでください。センチネル行(<<<...>>>)はそれぞれ単独の行に、必ずこの順序で出力してください。
             <<<short>>>
             (短め案の本文)
-            <<<standard>>>
-            (標準案の本文)
-            <<<polite>>>
-            (丁寧案の本文)
+            <<<long>>>
+            (長め案の本文)
             返信は届いたメッセージと同じ言語で書いてください。
-            - short: 簡潔な返信(1-2文)
-            - standard: 標準的な長さの返信
-            - polite: standardよりも丁寧な返信
+            - short: 1〜2文の簡潔な返信
+            - long: 文脈を汲んだより丁寧な返信(3〜6文程度)
             """,
             """
             役割定義(必ず守ること):
@@ -33,7 +30,7 @@ public struct PromptBuilder: Sendable {
             ❌ 誤った返信: 「すみません、今後は簡潔に伝えます。」(伝えたい内容に返答してしまっている)
             """,
             toneInstruction(for: request.tone),
-            sourceAppInstruction(for: request.context.sourceApp),
+            situationInstruction(for: request.situation),
         ]
 
         if let styleSection = styleInstruction(for: request.style) {
@@ -52,14 +49,12 @@ public struct PromptBuilder: Sendable {
         }
     }
 
-    private func sourceAppInstruction(for sourceApp: SourceApp) -> String {
-        switch sourceApp {
-        case .slack:
-            return "送信先はチャット(Slack)です。チャット向けの文体にし、挨拶や署名は不要です。"
+    private func situationInstruction(for situation: Situation) -> String {
+        switch situation {
         case .mail:
             return "送信先はメールです。メールの作法に従い、宛名と結びの言葉を適切に含めてください。"
-        case .browser, .other:
-            return "送信先は特定のフォーマットを問いません。ニュートラルな文体で書いてください。"
+        case .chat:
+            return "送信先はチャットです。チャット向けの短い文体にし、挨拶や署名は不要です。"
         }
     }
 
@@ -87,8 +82,6 @@ public struct PromptBuilder: Sendable {
 
     private func intentInstruction(for intent: ReplyIntent) -> String {
         switch intent {
-        case .auto:
-            return "メッセージ内容から、送り手が最も自然に返すべき意図(承諾・お断り・質問への回答・確認など)を推測して返信を作ってください。"
         case .accept:
             return "承諾する返信を作成してください。"
         case .decline:

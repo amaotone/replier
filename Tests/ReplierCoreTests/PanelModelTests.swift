@@ -9,6 +9,7 @@ private final class StubDrafter: ReplyDrafting, @unchecked Sendable {
 
     private let behavior: Behavior
     private(set) var capturedRequest: ReplyRequest?
+    private(set) var callCount = 0
 
     init(chunks: [String]) {
         self.behavior = .chunks(chunks)
@@ -20,6 +21,7 @@ private final class StubDrafter: ReplyDrafting, @unchecked Sendable {
 
     func draft(_ request: ReplyRequest) async throws -> AsyncThrowingStream<String, Error> {
         capturedRequest = request
+        callCount += 1
         switch behavior {
         case .chunks(let chunks):
             return AsyncThrowingStream { continuation in
@@ -115,10 +117,8 @@ private struct StubError: Error, Equatable {}
 private let validSentinelText = """
 <<<short>>>
 了解です。
-<<<standard>>>
-承知しました。対応します。
-<<<polite>>>
-ご連絡いただきありがとうございます。承知いたしました。
+<<<long>>>
+承知しました。内容を確認の上、対応いたします。ご不明な点があれば改めてご連絡します。
 """
 
 private func chunked(_ text: String, size: Int = 8) -> [String] {
@@ -197,7 +197,29 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(model.tone == .business)
     }
 
-    @Test func chooseWithAutoIntentStartsGenerationImmediatelyAndPassesThroughToDrafter() async throws {
+    @Test func mailContextDefaultsSituationToMail() {
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: StubDrafter(chunks: []),
+            style: StyleProfile()
+        )
+        #expect(model.situation == .mail)
+    }
+
+    @Test func nonMailContextDefaultsSituationToChat() {
+        for sourceApp: SourceApp in [.slack, .browser, .other] {
+            let model = PanelModel(
+                contextText: "hello",
+                sourceApp: sourceApp,
+                drafter: StubDrafter(chunks: []),
+                style: StyleProfile()
+            )
+            #expect(model.situation == .chat)
+        }
+    }
+
+    @Test func chooseStartsGenerationImmediatelyAndPassesThroughToDrafter() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -206,16 +228,31 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .auto)
+        model.choose(intent: .accept)
         // choose() returns synchronously already in .generating, before the background
         // generation task has necessarily run.
         #expect(model.phase == .generating || model.phase == .ready)
 
         try await waitUntilOnMain { model.phase == .ready }
-        #expect(drafter.capturedRequest?.intent == .auto)
+        #expect(drafter.capturedRequest?.intent == .accept)
     }
 
-    @Test func chooseEndsReadyWithThreeParsedCandidatesAndStandardSelected() async throws {
+    @Test func choosePassesSituationThroughToDrafter() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+        model.situation = .chat
+
+        model.choose(intent: .accept)
+        try await waitUntilOnMain { model.phase == .ready }
+        #expect(drafter.capturedRequest?.situation == .chat)
+    }
+
+    @Test func chooseEndsReadyWithTwoParsedCandidatesAndShortSelected() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "会議の件、了解しました",
@@ -227,11 +264,10 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         model.choose(intent: .accept)
         try await waitUntilOnMain { model.phase == .ready }
 
-        #expect(model.partials.count == 3)
-        #expect(model.selectedIndex == 1)
+        #expect(model.partials.count == 2)
+        #expect(model.selectedIndex == 0)
         #expect(model.partials[0].label == .short)
-        #expect(model.partials[1].label == .standard)
-        #expect(model.partials[2].label == .polite)
+        #expect(model.partials[1].label == .long)
         #expect(model.partials.allSatisfy { $0.isComplete })
     }
 
@@ -261,7 +297,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(model.phase == .ready)
         #expect(observedCounts == observedCounts.sorted())
         #expect(observedCounts.first == 0)
-        #expect(observedCounts.last == 3)
+        #expect(observedCounts.last == 2)
     }
 
     @Test func singleCandidateAtFinishStillResultsInReady() async throws {
@@ -273,7 +309,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .auto)
+        model.choose(intent: .accept)
         try await waitUntilOnMain { model.phase == .ready }
 
         #expect(model.partials.count == 1)
@@ -323,19 +359,19 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
 
         model.choose(intent: .accept)
         try await waitUntilOnMain { model.phase == .ready }
-        #expect(model.selectedIndex == 1)
+        #expect(model.selectedIndex == 0)
 
         model.moveSelection(-1)
-        #expect(model.selectedIndex == 0)
-        model.moveSelection(-1)
-        #expect(model.selectedIndex == 2)
+        #expect(model.selectedIndex == 1)
         model.moveSelection(1)
         #expect(model.selectedIndex == 0)
+        model.moveSelection(1)
+        #expect(model.selectedIndex == 1)
     }
 
     @Test func moveSelectionNavigatesOverPartialsWhileGenerating() async throws {
         let drafter = SequencedDrafter(behaviors: [
-            .hang(firstChunk: "<<<short>>>\n短め\n<<<standard>>>\n標準\n"),
+            .hang(firstChunk: "<<<short>>>\n短め\n<<<long>>>\n長め\n"),
         ])
         let model = PanelModel(
             contextText: "hello",
@@ -344,7 +380,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .auto)
+        model.choose(intent: .accept)
         try await waitUntilOnMain { model.partials.count == 2 }
 
         #expect(model.selectedIndex == 0)
@@ -364,7 +400,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
 
     @Test func selectedTextRequiresCandidateToBeComplete() async throws {
         let drafter = SequencedDrafter(behaviors: [
-            .hang(firstChunk: "<<<short>>>\n短め\n<<<standard>>>\n進行中\n"),
+            .hang(firstChunk: "<<<short>>>\n短め\n<<<long>>>\n進行中\n"),
         ])
         let model = PanelModel(
             contextText: "hello",
@@ -373,7 +409,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .auto)
+        model.choose(intent: .accept)
         try await waitUntilOnMain { model.partials.count == 2 }
 
         #expect(model.partials[0].isComplete)
@@ -395,10 +431,10 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
 
         model.choose(intent: .accept)
         try await waitUntilOnMain { model.phase == .ready }
-        #expect(model.selectedText == "承知しました。対応します。")
+        #expect(model.selectedText == "了解です。")
 
         model.moveSelection(-1)
-        #expect(model.selectedText == "了解です。")
+        #expect(model.selectedText == "承知しました。内容を確認の上、対応いたします。ご不明な点があれば改めてご連絡します。")
     }
 
     @Test func resetToComposingReturnsFromFailedToComposingAndClearsPartials() async throws {
@@ -459,7 +495,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         #expect(instruction == "英語で返信してください")
     }
 
-    @Test func submitInstructionWithEmptyTextFallsBackToAutoIntent() async throws {
+    @Test func submitInstructionWithEmptyTextIsNoOp() async throws {
         let drafter = StubDrafter(chunks: chunked(validSentinelText))
         let model = PanelModel(
             contextText: "hello",
@@ -470,9 +506,12 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
 
         model.instruction = "   "
         model.submitInstruction()
-        try await waitUntilOnMain { model.phase == .ready }
 
-        #expect(drafter.capturedRequest?.intent == .auto)
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(model.partials.isEmpty)
+        #expect(drafter.callCount == 0)
     }
 
     @Test func submitInstructionDuringGenerationCancelsPreviousAndStartsNew() async throws {
@@ -496,7 +535,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         model.submitInstruction()
         try await waitUntilOnMain { model.phase == .ready }
 
-        #expect(model.partials.count == 3)
+        #expect(model.partials.count == 2)
         #expect(model.partials[0].text == "了解です。")
         #expect(drafter.cancelledCallIndices.contains(0))
     }
@@ -513,22 +552,38 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .auto)
+        model.choose(intent: .accept)
         try await waitUntilOnMain { !model.partials.isEmpty }
         #expect(model.partials.first?.text == "古い生成中")
 
         // Simulates clicking an intent chip while the first generation is still stuck.
-        model.choose(intent: .accept)
+        model.choose(intent: .decline)
         try await waitUntilOnMain { model.phase == .ready }
 
-        #expect(model.partials.count == 3)
+        #expect(model.partials.count == 2)
         #expect(model.partials[0].text == "了解です。")
         #expect(drafter.cancelledCallIndices.contains(0))
     }
 
+    @Test func regenerateIsNoOpBeforeAnyGeneration() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.regenerate()
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(drafter.callCount == 0)
+    }
+
     @Test func cancellingViaConfirmSelectionDoesNotFlipPhaseToFailed() async throws {
         let drafter = SequencedDrafter(behaviors: [
-            .hang(firstChunk: "<<<short>>>\n短めの案\n<<<standard>>>\n進行中\n"),
+            .hang(firstChunk: "<<<short>>>\n短めの案\n<<<long>>>\n進行中\n"),
         ])
         let model = PanelModel(
             contextText: "hello",
@@ -537,7 +592,7 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
             style: StyleProfile()
         )
 
-        model.choose(intent: .auto)
+        model.choose(intent: .accept)
         try await waitUntilOnMain { model.partials.first?.isComplete == true }
 
         let confirmed = model.confirmSelection()
@@ -548,5 +603,51 @@ private func waitUntilOnMain(timeout: Duration = .seconds(2), _ condition: () ->
         if case .failed = model.phase {
             Issue.record("cancellation should not result in .failed")
         }
+    }
+
+    @Test func changingToneDoesNotStartGeneration() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.tone = .casual
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(drafter.callCount == 0)
+    }
+
+    @Test func changingSituationDoesNotStartGeneration() async throws {
+        let drafter = StubDrafter(chunks: chunked(validSentinelText))
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: drafter,
+            style: StyleProfile()
+        )
+
+        model.situation = .chat
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.phase == .composing)
+        #expect(drafter.callCount == 0)
+    }
+
+    @Test func requestFocusIncrementsFocusRequestCounter() {
+        let model = PanelModel(
+            contextText: "hello",
+            sourceApp: .mail,
+            drafter: StubDrafter(chunks: []),
+            style: StyleProfile()
+        )
+        #expect(model.focusRequest == 0)
+        model.requestFocus()
+        #expect(model.focusRequest == 1)
+        model.requestFocus()
+        #expect(model.focusRequest == 2)
     }
 }

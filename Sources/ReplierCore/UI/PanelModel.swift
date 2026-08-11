@@ -14,12 +14,18 @@ public final class PanelModel {
     public var contextText: String
     public let sourceApp: SourceApp
     public var tone: Tone
+    public var situation: Situation
     /// The 返信欄 text: the user's one-line gist/instruction for the reply. Bound
     /// directly by `PanelView`'s instruction field and read by `submitInstruction()`.
     public var instruction: String = ""
     public private(set) var partials: [PartialCandidate] = []
     public private(set) var selectedIndex: Int = 0
-    public private(set) var lastIntent: ReplyIntent = .auto
+    public private(set) var lastIntent: ReplyIntent?
+    /// Bumped by `PanelController.show()` right after the panel becomes key. `PanelView`
+    /// observes this via `.onChange` to reliably refocus the instruction field on every
+    /// open/reopen — a plain SwiftUI `.onAppear` fires before a non-activating `NSPanel`
+    /// hosted in an `NSHostingView` actually becomes key, so it can't be trusted alone.
+    public private(set) var focusRequest: Int = 0
 
     private let drafter: any ReplyDrafting
     private let style: StyleProfile
@@ -30,12 +36,19 @@ public final class PanelModel {
         self.contextText = contextText
         self.sourceApp = sourceApp
         self.tone = sourceApp == .slack ? .casual : .business
+        self.situation = sourceApp == .mail ? .mail : .chat
         self.drafter = drafter
         self.style = style
     }
 
+    public func requestFocus() {
+        focusRequest += 1
+    }
+
     /// Cancels any in-flight generation and starts a new one. Safe to call while a
-    /// generation is already streaming (e.g. a chip/tone change acting as "regenerate").
+    /// generation is already streaming (e.g. a second chip tap acting as "regenerate").
+    /// Tone/situation edits do NOT call this — they only update state, taking effect at
+    /// the next explicit generation.
     public func choose(intent: ReplyIntent) {
         generationTask?.cancel()
         currentGeneration += 1
@@ -50,6 +63,7 @@ public final class PanelModel {
             context: CapturedContext(text: contextText, sourceApp: sourceApp),
             intent: intent,
             tone: tone,
+            situation: situation,
             style: style
         )
 
@@ -58,17 +72,19 @@ public final class PanelModel {
         }
     }
 
-    /// Re-runs generation with whatever intent was last used (defaults to `.auto`).
+    /// Re-runs generation with whatever intent was last used. No-op if nothing has been
+    /// generated yet (e.g. called from the "やり直す" retry button before any `choose`).
     public func regenerate() {
+        guard let lastIntent else { return }
         choose(intent: lastIntent)
     }
 
-    /// Submits the current `instruction` text: non-empty text becomes a `.custom`
-    /// intent, empty text falls back to `.auto`. Safe to call again while generating
-    /// or ready — `choose(intent:)` cancels the in-flight generation and restarts.
+    /// Submits the current `instruction` text as a `.custom` intent. Empty/whitespace
+    /// text is a no-op and leaves `phase` unchanged — there is no おまかせ(auto) fallback.
     public func submitInstruction() {
         let trimmed = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
-        choose(intent: trimmed.isEmpty ? .auto : .custom(trimmed))
+        guard !trimmed.isEmpty else { return }
+        choose(intent: .custom(trimmed))
     }
 
     private func isStale(_ generation: Int) -> Bool {
@@ -96,7 +112,7 @@ public final class PanelModel {
         partials = final
         if final.contains(where: { !$0.text.isEmpty }) {
             phase = .ready
-            selectedIndex = final.firstIndex(where: { $0.label == .standard }) ?? 0
+            selectedIndex = final.firstIndex(where: { $0.label == .short }) ?? 0
         } else {
             phase = .failed("返信案を生成できませんでした。")
         }
