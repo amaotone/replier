@@ -1,10 +1,10 @@
 ---
 id: TASK-31
 title: codex実行ファイル検出の堅牢化(GUIアプリのPATH問題)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 16:32'
-updated_date: '2026-08-11 16:32'
+updated_date: '2026-08-11 17:07'
 labels:
   - core
 dependencies: []
@@ -20,9 +20,15 @@ ordinal: 31000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 mise/volta/npm-global配下のcodexを.app起動でも検出できる
-- [ ] #2 ログインシェル(dscl由来)経由のPATH解決フォールバックがある
-- [ ] #3 設定画面から実行ファイルパスを手動指定でき、UserDefaultsに永続化される
-- [ ] #4 エラーメッセージが検索場所と設定方法を案内する
-- [ ] #5 検出ロジックの純粋部分に単体テストがある
+- [x] #1 mise/volta/npm-global配下のcodexを.app起動でも検出できる
+- [x] #2 ログインシェル(dscl由来)経由のPATH解決フォールバックがある
+- [x] #3 設定画面から実行ファイルパスを手動指定でき、UserDefaultsに永続化される
+- [x] #4 エラーメッセージが検索場所と設定方法を案内する
+- [x] #5 検出ロジックの純粋部分に単体テストがある
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+最小PATH(env -i)実証済み: mise shimを0.004秒で解決。候補にChatGPT.app同梱codex(/Applications/ChatGPT.app/Contents/Resources/codex)とstandalone管理インストールも追加。151テスト
+<!-- SECTION:NOTES:END -->
