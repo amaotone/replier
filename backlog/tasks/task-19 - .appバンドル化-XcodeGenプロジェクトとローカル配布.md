@@ -1,10 +1,10 @@
 ---
 id: TASK-19
 title: '.appバンドル化: XcodeGenプロジェクトとローカル配布'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-11 09:22'
-updated_date: '2026-08-11 13:14'
+updated_date: '2026-08-11 13:24'
 labels:
   - shell
 dependencies:
@@ -22,7 +22,13 @@ swift run起動からReplier.appへ。XcodeGenのproject.ymlでアプリター�
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 ビルドスクリプト一発でReplier.appが生成される
+- [x] #1 ビルドスクリプト一発でReplier.appが生成される
 - [ ] #2 .app起動でメニューバー常駐・ホットキー・パネル・生成が動作する(Dockアイコンなし)
 - [ ] #3 AX権限が.appに付与でき再ビルド後も維持される
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Scripts/build-app.sh一発でdist/Replier.app生成(ad-hoc署名、bundle id dev.amaotone.replier固定)。起動スモーク確認済み。AC2/3(GUI動作とAX権限の再ビルド維持)はユーザー実機確認待ち。実装ノート: ルートパッケージ参照はスキーム名衝突で.appが生成されないため、ReplierCoreソース直接コンパイル+canImportガード方式を採用
+<!-- SECTION:NOTES:END -->
